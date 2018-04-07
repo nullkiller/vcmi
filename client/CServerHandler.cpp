@@ -484,12 +484,12 @@ void CServerHandler::endGameplay(bool closeConnection)
 	}
 	if(CMM)
 	{
-		GH.curInt = CMM;
+		GH.curInt = CMM.get();
 		CMM->enable();
 	}
 	else
 	{
-		GH.curInt = CMainMenu::create();
+		GH.curInt = CMainMenu::create().get();
 	}
 }
 
@@ -555,7 +555,7 @@ void CServerHandler::debugStartTest(std::string filename, bool save)
 	else
 		startLocalServerAndConnect();
 
-	while(!settings["session"]["headless"].Bool() && !dynamic_cast<CLobbyScreen *>(GH.topInt()))
+	while(!settings["session"]["headless"].Bool() && !dynamic_cast<CLobbyScreen *>(GH.topInt().get()))
 		boost::this_thread::sleep(boost::posix_time::milliseconds(50));
 	while(!mi || mapInfo->fileURI != CSH->mi->fileURI)
 	{
