@@ -41,6 +41,14 @@ Tasks::TaskList Defence::getTasks() {
 		return tasks;
 	}
 
+	if (this->hero) {
+		std::vector<const CGObjectInstance*> enemyHeroObjects = std::vector<const CGObjectInstance*>(
+			enemyHeroes.begin(),
+			enemyHeroes.end());
+
+		addTasks(tasks, sptr(CaptureObjects(enemyHeroObjects).sethero(this->hero)), 0, 1);
+	}
+
 	if (myHeroes.empty()) {
 		//addTask(tasks, Tasks::RecruitHero(), 0);
 		return tasks;

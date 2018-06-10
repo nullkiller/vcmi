@@ -58,7 +58,7 @@ Tasks::TaskList Win::getTasks() {
 		switch (goal.condition)
 		{
 		case EventCondition::HAVE_ARTIFACT:
-			addTasks(tasks, sptr(Goals::CaptureObjects().ofType(goal.objectType)), 1);
+			addTasks(tasks, sptr(Goals::CaptureObjects().ofType(Obj::ARTIFACT, goal.objectType)), 1);
 			break;
 		case EventCondition::DESTROY:
 		case EventCondition::CONTROL:

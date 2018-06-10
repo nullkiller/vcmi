@@ -1978,21 +1978,20 @@ int3 VCAI::explorationBestNeighbour(int3 hpos, int radius, HeroPtr h)
 	int3 ourPos = h->visitablePos();
 	const CPathsInfo* pathsInfo = cbp->getPathsInfo(h.get());
 
-	std::map<int3, int> dstToRevealedTiles;
+	std::map<int3, double> dstToRevealedTiles;
 	for(crint3 dir : int3::getDirs())
 	{
 		int3 tile = hpos + dir;
 		if(cbp->isInTheMap(tile))
 		{
-			if(ourPos != dir) //don't stand in place
+			if(isSafeToVisit(h, tile) && isAccessibleForHero(tile, h))
 			{
-				if(isSafeToVisit(h, tile) && isAccessibleForHero(tile, h))
-				{
-					if(isBlockVisitObj(tile))
-						continue;
-					else
-						dstToRevealedTiles[tile] = howManyTilesWillBeDiscovered(tile, radius, cbp, pathsInfo);
-				}
+				double distance = distanceToTile(pathsInfo, tile);
+
+				if(isBlockVisitObj(tile))
+					continue;
+				else
+					dstToRevealedTiles[tile] = howManyTilesWillBeDiscovered(tile, radius, cbp, pathsInfo) / distance;
 			}
 		}
 	}

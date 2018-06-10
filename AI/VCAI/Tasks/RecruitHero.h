@@ -24,8 +24,13 @@ struct SectorMap;
 namespace Tasks
 {
 	class RecruitHero : public TemplateTask<RecruitHero> {
+	private:
+		const CGTownInstance* targetTown;
+
 	public:
-		RecruitHero() {
+		RecruitHero(const CGTownInstance* targetTown) 
+			: targetTown(targetTown)
+		{
 		}
 
 		virtual void execute() override;

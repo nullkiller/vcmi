@@ -389,14 +389,43 @@ TGoalVec ClearWayTo::getAllPossibleSubgoals()
 	return ret;
 }
 
+const CGTownInstance * findTownWithTavern()
+{
+	for (const CGTownInstance * t : cb->getTownsInfo())
+		if (t->hasBuilt(BuildingID::TAVERN) && !t->visitingHero)
+			return t;
+
+	return nullptr;
+}
+bool canRecruitAnyHero(const CGTownInstance * t)
+{
+	//TODO: make gathering gold, building tavern or conquering town (?) possible subgoals
+	if (!t)
+		t = findTownWithTavern();
+	if (!t)
+		return false;
+	if (cb->getResourceAmount(Res::GOLD) < GameConstants::HERO_GOLD_COST * 3)
+		return false;
+	if (cb->getHeroesInfo().size() >= ALLOWED_ROAMING_HEROES)
+		return false;
+	if (!cb->getAvailableHeroes(t).size())
+		return false;
+
+	return true;
+}
+
 Tasks::TaskList RecruitHero::getTasks() {
 	Tasks::TaskList tasks;
 	auto heroes = cb->getHeroesInfo();
 	auto towns = cb->getTownsInfo();
 
 	if (cb->getResourceAmount(Res::GOLD) > GameConstants::HERO_GOLD_COST * 3
-		&& heroes.size() < towns.size() + 1) {
-		tasks.push_back(Tasks::sptr(Tasks::RecruitHero()));
+		&& heroes.size() < towns.size() + 1) 
+	{
+		if (const CGTownInstance * t = findTownWithTavern())
+		{
+			tasks.push_back(Tasks::sptr(Tasks::RecruitHero(t)));
+		}
 	}
 
 	return tasks;
@@ -610,12 +639,16 @@ bool AbstractGoal::invalid() const
 	return goalType == INVALID;
 }
 
-void AbstractGoal::addTasks(Tasks::TaskList &target, TSubgoal subgoal, double priority) {
+void AbstractGoal::addTasks(Tasks::TaskList &target, TSubgoal subgoal, double priorityMin, double priorityMax) {
 	logAi->trace("Searching tasks for %s", subgoal->toString());
 	auto tasks = subgoal->getTasks();
 
+	if (priorityMax == 0) {
+		priorityMax = priorityMin + 0.1;
+	}
+
 	for (Tasks::TaskPtr t : tasks) {
-		t->addAncestorPriority(priority);
+		t->addAncestorPriority(priorityMin, priorityMax);
 		logAi->trace("Task found %s", t->toString());
 		target.push_back(t);
 	}
@@ -624,7 +657,7 @@ void AbstractGoal::addTasks(Tasks::TaskList &target, TSubgoal subgoal, double pr
 void AbstractGoal::addTask(Tasks::TaskList &target, const Tasks::CTask &task, double priority) {
 	auto taskPtr = Tasks::sptr(task);
 	if (taskPtr->canExecute()) {
-		taskPtr->addAncestorPriority(priority);
+		taskPtr->addAncestorPriority(priority, priority + 0.1);
 		logAi->trace("Task found %s", taskPtr->toString());
 		target.push_back(taskPtr);
 	}

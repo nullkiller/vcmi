@@ -54,8 +54,10 @@ namespace Tasks
 		double getPriority() {
 			return priority;
 		}
-		void addAncestorPriority(double ancestorPriority) {
-			priority = ancestorPriority + priority / 10.0;
+		void addAncestorPriority(double ancestorPriorityMin, double ancestorsPriorityMax) {
+			double diff = ancestorsPriorityMax - ancestorPriorityMin;
+
+			priority = ancestorPriorityMin + priority * diff;
 		}
 	};
 

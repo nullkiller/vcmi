@@ -165,7 +165,7 @@ public:
 
 protected:
 	//TODO: consider making TaskList a class and move these methods there
-	void addTasks(Tasks::TaskList &target,TSubgoal subgoal, double priority = 0);
+	void addTasks(Tasks::TaskList &target,TSubgoal subgoal, double priorityMin = 0, double priorityMax = 0);
 	void addTask(Tasks::TaskList &target, const Tasks::CTask &task, double priority = 0);
 	void sortByPriority(Tasks::TaskList &target);
 };

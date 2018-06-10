@@ -28,51 +28,12 @@ extern boost::thread_specific_ptr<VCAI> ai;
 
 using namespace Goals;
 
-std::map<const CGHeroInstance*, const CGTownInstance*> getHeroTownMap(std::vector<const CGHeroInstance*> heroes) {
-	auto towns = cb->getTownsInfo();
-	std::map<const CGHeroInstance*, const CGTownInstance*> result;
-
-	if (heroes.size() <= 1 || towns.empty()) {
-		return result;
-	}
-
-	vstd::erase_if_present(heroes, heroes.at(0));
-
-	for (const CGTownInstance* town : towns) {
-		auto hero = getNearestHero(heroes, town->visitablePos());
-		vstd::erase_if_present(heroes, hero);
-
-		result[hero] = town;
-
-		if (heroes.empty()) {
-			break;
-		}
-	}
-
-	return result;
-}
-
 Tasks::TaskList Conquer::getTasks() {
 	auto tasks = Tasks::TaskList();
 	auto heroes = cb->getHeroesInfo();
 
 	// lets process heroes according their army strength in descending order
 	std::sort(heroes.begin(), heroes.end(), isLevelHigher);
-
-	addTasks(tasks, sptr(Defence()), 1);
-
-	if (tasks.size()) {
-		return tasks;
-	}
-
-	addTasks(tasks, sptr(CaptureObjects().ofType(Obj::HERO)), 1);
-	addTasks(tasks, sptr(CaptureObjects().ofType(Obj::TOWN)), 0.95);
-
-	if (tasks.size()) {
-		sortByPriority(tasks);
-
-		return tasks;
-	}
 
 	addTasks(tasks, sptr(Build()), 0.8);
 	addTasks(tasks, sptr(RecruitHero()));
@@ -85,8 +46,6 @@ Tasks::TaskList Conquer::getTasks() {
 
 	addTasks(tasks, sptr(GatherArmy()), 0.7); // no hero - just pickup existing army, no buy
 
-	auto heroTownMap = getHeroTownMap(heroes);
-
 	for (auto nextHero : heroes) {
 		if (!nextHero->movement) {
 			continue;
@@ -97,6 +56,9 @@ Tasks::TaskList Conquer::getTasks() {
 
 		logAi->trace("Considering tasks for hero %s", nextHero->name);
 
+		addTasks(tasks, sptr(Defence().sethero(heroPtr)), 1);
+		addTasks(tasks, sptr(CaptureObjects().ofType(Obj::TOWN).sethero(heroPtr)), 0.95);
+
 		addTasks(heroTasks, sptr(CaptureObjects().ofType(Obj::MINE).sethero(heroPtr)), 0.58);
 		addTasks(heroTasks, sptr(CaptureObjects().sethero(HeroPtr(heroPtr))), 0.5);
 
@@ -106,15 +68,7 @@ Tasks::TaskList Conquer::getTasks() {
 			addTasks(heroTasks, sptr(Explore().sethero(HeroPtr(heroPtr))), 0.65);
 		}
 		else {
-			if (vstd::contains(heroTownMap, nextHero)) {
-				auto assignedTown = heroTownMap.at(nextHero);
-				if (assignedTown->hasBuilt(BuildingID::CITY_HALL) && !assignedTown->visitingHero) {
-					addTask(heroTasks, Tasks::VisitTile(assignedTown->visitablePos(), nextHero, assignedTown), 0.3);
-				}
-			}
-			else {
-				addTasks(heroTasks, sptr(Explore().sethero(HeroPtr(heroPtr))), 0.5);
-			}
+			addTasks(heroTasks, sptr(Explore().sethero(HeroPtr(heroPtr))), 0.5);
 		}
 
 		if (heroTasks.empty() && nextHero->movement > 0) {

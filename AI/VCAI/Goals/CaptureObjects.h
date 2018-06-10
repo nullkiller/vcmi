@@ -27,6 +27,7 @@ namespace Goals
 class CaptureObjects : public CGoal<CaptureObjects> {
 private:
 	std::vector<int> objectTypes;
+	std::vector<int> objectSubTypes;
 	std::vector<const CGObjectInstance*> objectsToCapture;
 	bool specificObjects;
 	bool forceGatherArmy;
@@ -52,6 +53,12 @@ public:
 	virtual std::string toString() const override;
 	CaptureObjects& ofType(int type) {
 		objectTypes.push_back(type);
+
+		return *this;
+	}
+	CaptureObjects& ofType(int type, int subType) {
+		objectTypes.push_back(type);
+		objectSubTypes.push_back(subType);
 
 		return *this;
 	}

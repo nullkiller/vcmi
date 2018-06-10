@@ -126,6 +126,10 @@ bool CaptureObjects::shouldVisitObject(ObjectIdRef obj, HeroPtr hero, SectorMap&
 		return false;
 	}
 
+	if (!objInstance || objectSubTypes.size() && !vstd::contains(objectSubTypes, objInstance->subID)) {
+		return false;
+	}
+
 	const int3 pos = objInstance->visitablePos();
 	const int3 targetPos = sm.firstTileToGet(hero, pos);
 
