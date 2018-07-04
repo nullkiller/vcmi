@@ -426,28 +426,6 @@ int howManyTilesWillBeDiscovered(const int3 & pos, int radious, CCallback * cbp,
 	return ret;
 }
 
-bool boundaryBetweenTwoPoints(int3 pos1, int3 pos2, CCallback * cbp) //determines if two points are separated by known barrier
-{
-	int xMin = std::min(pos1.x, pos2.x);
-	int xMax = std::max(pos1.x, pos2.x);
-	int yMin = std::min(pos1.y, pos2.y);
-	int yMax = std::max(pos1.y, pos2.y);
-
-	for(int x = xMin; x <= xMax; ++x)
-	{
-		for(int y = yMin; y <= yMax; ++y)
-		{
-			int3 tile = int3(x, y, pos1.z); //use only on same level, ofc
-			if(std::abs(pos1.dist2d(tile) - pos2.dist2d(tile)) < 1.5)
-			{
-				if(!(cbp->isVisible(tile) && cbp->getTile(tile)->blocked)) //if there's invisible or unblocked tile between, it's good
-					return false;
-			}
-		}
-	}
-	return true; //if all are visible and blocked, we're at dead end
-}
-
 void getVisibleNeighbours(const std::vector<int3> & tiles, std::vector<int3> & out)
 {
 	for(const int3 & tile : tiles)
