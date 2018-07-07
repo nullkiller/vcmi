@@ -18,7 +18,6 @@
 #include "../../lib/mapObjects/CBank.h"
 #include "../../lib/mapObjects/CGTownInstance.h"
 #include "../../lib/mapObjects/CQuest.h"
-#include "../../lib/CPathfinder.h"
 #include "../../lib/mapping/CMapDefines.h"
 
 extern boost::thread_specific_ptr<CCallback> cb;
@@ -335,11 +334,15 @@ bool compareDanger(const CGObjectInstance * lhs, const CGObjectInstance * rhs)
 
 ui64 analyzeDanger(HeroPtr h, crint3 tile)
 {
-	si64 heroStrength = h->getTotalStrength();
+	si64 heroStrength = h->getTotalStrength() / SAFE_ATTACK_CONSTANT;
 	si64 dangerStrength = evaluateDanger(tile, *h);
-	si64 dif = dangerStrength - heroStrength / SAFE_ATTACK_CONSTANT;
 
-	return std::max((si64)0, dif);
+	if(dangerStrength <= heroStrength)
+	{
+		return 0;
+	}
+
+	return dangerStrength - heroStrength;
 }
 
 bool canBeEmbarkmentPoint(const TerrainTile * t, bool fromWater)
@@ -393,11 +396,12 @@ bool isBlockVisitObj(const int3 & pos)
 	return false;
 }
 
-bool hasReachableNeighbor(int3 pos, const CPathsInfo* paths, CCallback * cbp) {
-	for (crint3 dir : int3::getDirs())
+bool hasReachableNeighbor(const int3 &pos, HeroPtr hero, CCallback * cbp)
+{
+	for(crint3 dir : int3::getDirs())
 	{
 		int3 tile = pos + dir;
-		if (cbp->isInTheMap(tile) && paths->getPathInfo(tile)->reachable())
+		if(cbp->isInTheMap(tile) && cbp->getPathsInfo(hero.get())->getPathInfo(tile)->reachable())
 		{
 			return true;
 		}
@@ -406,9 +410,8 @@ bool hasReachableNeighbor(int3 pos, const CPathsInfo* paths, CCallback * cbp) {
 	return false;
 }
 
-int howManyTilesWillBeDiscovered(const int3 & pos, int radious, CCallback * cbp, const CPathsInfo* pathsInfo)
+int howManyTilesWillBeDiscovered(const int3 & pos, int radious, CCallback * cbp, HeroPtr hero)
 {
-	//TODO: do not explore dead-end boundaries
 	int ret = 0;
 	for(int x = pos.x - radious; x <= pos.x + radious; x++)
 	{
@@ -417,7 +420,7 @@ int howManyTilesWillBeDiscovered(const int3 & pos, int radious, CCallback * cbp,
 			int3 npos = int3(x, y, pos.z);
 			if(cbp->isInTheMap(npos) && pos.dist2d(npos) - 0.5 < radious && !cbp->isVisible(npos))
 			{
-				if(hasReachableNeighbor(npos, pathsInfo, cbp))
+				if(hasReachableNeighbor(npos, hero, cbp))
 					ret++;
 			}
 		}
