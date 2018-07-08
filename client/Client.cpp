@@ -110,6 +110,7 @@ CClient::CClient()
 {
 	waitingRequest.clear();
 	pathInfo = nullptr;
+	chainInfo = nullptr;
 	applier = std::make_shared<CApplier<CBaseForCLApply>>();
 	registerTypesClientPacks1(*applier);
 	registerTypesClientPacks2(*applier);
@@ -317,6 +318,7 @@ void CClient::initMapHandler()
 		logNetwork->trace("Initializing mapHandler (together): %d ms", CSH->th->getDiff());
 	}
 	pathInfo = make_unique<CPathsInfo>(getMapSize());
+	chainInfo = make_unique<CHeroChainInfo>(getMapSize());
 }
 
 void CClient::initPlayerInterfaces()
@@ -633,6 +635,15 @@ const CPathsInfo * CClient::getPathsInfo(const CGHeroInstance * h)
 		gs->calculatePaths(h, *pathInfo.get());
 	}
 	return pathInfo.get();
+}
+
+const CHeroChainInfo * CClient::getHeroChainInfo(std::shared_ptr<CHeroChainConfig> config)
+{
+	boost::unique_lock<boost::mutex> pathLock(chainInfo->pathMx);
+	
+	gs->calculatePaths(config, *chainInfo.get());
+
+	return chainInfo.get();
 }
 
 PlayerColor CClient::getLocalPlayer() const

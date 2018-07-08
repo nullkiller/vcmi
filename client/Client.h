@@ -100,6 +100,7 @@ class CClient : public IGameCallback
 {
 	std::shared_ptr<CApplier<CBaseForCLApply>> applier;
 	std::unique_ptr<CPathsInfo> pathInfo;
+	std::unique_ptr<CHeroChainInfo> chainInfo;
 
 	std::map<PlayerColor, std::shared_ptr<boost::thread>> playerActionThreads;
 	void waitForMoveAndSend(PlayerColor color);
@@ -151,6 +152,7 @@ public:
 
 	void invalidatePaths();
 	const CPathsInfo * getPathsInfo(const CGHeroInstance * h);
+	const CHeroChainInfo * getHeroChainInfo(std::shared_ptr<CHeroChainConfig> config);
 	virtual PlayerColor getLocalPlayer() const override;
 
 	friend class CCallback; //handling players actions

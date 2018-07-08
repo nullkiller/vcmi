@@ -291,6 +291,11 @@ const CPathsInfo * CCallback::getPathsInfo(const CGHeroInstance *h)
 	return cl->getPathsInfo(h);
 }
 
+const CHeroChainInfo * CCallback::getHeroChainInfo(std::shared_ptr<CHeroChainConfig> config)
+{
+	return cl->getHeroChainInfo(config);
+}
+
 int3 CCallback::getGuardingCreaturePosition(int3 tile)
 {
 	if (!gs->map->isInTheMap(tile))

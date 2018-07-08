@@ -25,6 +25,8 @@ class IShipyard;
 struct CGPathNode;
 struct CGPath;
 struct CPathsInfo;
+struct CHeroChainInfo;
+class CHeroChainConfig;
 struct CPack;
 class IBattleEventsReceiver;
 class IGameEventsReceiver;
@@ -106,6 +108,7 @@ public:
 	virtual bool canMoveBetween(const int3 &a, const int3 &b);
 	virtual int3 getGuardingCreaturePosition(int3 tile);
 	virtual const CPathsInfo * getPathsInfo(const CGHeroInstance *h);
+	virtual const CHeroChainInfo * getHeroChainInfo(std::shared_ptr<CHeroChainConfig> config);
 
 	virtual void calculatePaths(const CGHeroInstance *hero, CPathsInfo &out);
 

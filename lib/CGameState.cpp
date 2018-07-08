@@ -1970,8 +1970,14 @@ void CGameState::apply(CPack *pack)
 
 void CGameState::calculatePaths(const CGHeroInstance *hero, CPathsInfo &out)
 {
-	CPathfinder pathfinder(out, this, hero);
-	pathfinder.calculatePaths();
+	CPathfinder pathfinder;
+	pathfinder.calculatePaths(out, this, hero);
+}
+
+void CGameState::calculatePaths(std::shared_ptr<CHeroChainConfig> config, CHeroChainInfo &out)
+{
+	CHeroChainFinder pathfinder;
+	pathfinder.calculatePaths(out, this, config);
 }
 
 /**
