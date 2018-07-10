@@ -541,6 +541,7 @@ void VCAI::init(std::shared_ptr<CCallback> CB)
 	if(!fh)
 		fh = new FuzzyHelper();
 
+	turnData = std::make_unique<TurnData>(playerID);
 	retrieveVisitableObjs();
 }
 
@@ -747,6 +748,7 @@ void VCAI::makeTurnInternal()
 
 	try
 	{
+
 		auto goal = Goals::sptr(Goals::Win());
 		Tasks::TaskList tasks = goal->getTasks();
 
@@ -783,6 +785,7 @@ void VCAI::makeTurnInternal()
 			validateVisitableObjs();
 			clearPathsInfo();
 
+			turnData->update();
 			tasks = goal->getTasks();
 		}
 
@@ -1974,7 +1977,7 @@ void VCAI::buildArmyIn(const CGTownInstance * t)
 
 int3 VCAI::explorationBestNeighbour(int3 hpos, int radius, HeroPtr h)
 {
-	std::map<int3, int> dstToRevealedTiles;
+	std::map<int3, double> dstToRevealedTiles;
 
 	for(crint3 dir : int3::getDirs())
 	{
@@ -1986,7 +1989,7 @@ int3 VCAI::explorationBestNeighbour(int3 hpos, int radius, HeroPtr h)
 
 			if(isSafeToVisit(h, tile) && isAccessibleForHero(tile, h))
 			{
-				auto distance = hpos.dist2d(tile); // diagonal movement opens more tiles but spends more mp
+				double distance = distanceToTile(h.get(), tile); // diagonal movement opens more tiles but spends more mp
 				dstToRevealedTiles[tile] = howManyTilesWillBeDiscovered(tile, radius, cb.get(), h) / distance;
 			}
 		}
@@ -2501,9 +2504,9 @@ bool shouldVisit(HeroPtr h, const CGObjectInstance * obj)
 		}
 		return false;
 	}
-	case Obj::MONOLITH_ONE_WAY_ENTRANCE:
+	//case Obj::MONOLITH_ONE_WAY_ENTRANCE:
 	case Obj::MONOLITH_ONE_WAY_EXIT:
-	case Obj::MONOLITH_TWO_WAY:
+	//case Obj::MONOLITH_TWO_WAY:
 	case Obj::WHIRLPOOL:
 		return false;
 	case Obj::SCHOOL_OF_MAGIC:

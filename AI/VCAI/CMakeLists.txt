@@ -11,6 +11,9 @@ set(VCAI_SRCS
 		AIUtility.cpp
 		Fuzzy.cpp
 		SectorMap.cpp
+		Analysers/TurnData.cpp
+		Analysers/CHeroChainConfig.cpp
+		Analysers/CHeroChainAnalyser.cpp
 		Goals/Goal.cpp
 		Goals/Build.cpp
 		Goals/Defence.cpp
@@ -35,6 +38,9 @@ set(VCAI_HEADERS
 		AIUtility.h
 		Fuzzy.h
 		SectorMap.h
+		Analysers/TurnData.h
+		Analysers/CHeroChainConfig.h
+		Analysers/CHeroChainAnalyser.h
 		Goals/Goal.h
 		Goals/Build.h
 		Goals/Defence.h

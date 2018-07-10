@@ -11,6 +11,7 @@
 
 #include "AIUtility.h"
 #include "Goals/Goal.h"
+#include "Analysers/TurnData.h"
 #include "../../lib/AI_Base.h"
 #include "../../CCallback.h"
 
@@ -113,6 +114,7 @@ public:
 	std::shared_ptr<CCallback> myCb;
 
 	std::unique_ptr<boost::thread> makingTurn;
+	std::unique_ptr<TurnData> turnData;
 
 	VCAI();
 	virtual ~VCAI();

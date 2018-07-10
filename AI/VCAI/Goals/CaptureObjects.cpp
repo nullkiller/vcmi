@@ -34,88 +34,70 @@ Tasks::TaskList CaptureObjects::getTasks() {
 	auto neededArmy = 0;
 	auto heroes = cb->getHeroesInfo();
 	
-	auto captureObjects = [&](std::vector<const CGObjectInstance*> objs, HeroPtr hero) -> bool {
+	auto captureObjects = [&](std::vector<const CGObjectInstance*> objs) -> bool {
 		if (objs.empty()) {
 			return false;
 		}
 
-		auto sm = ai->getCachedSectorMap(hero);
-		auto pathsInfo = cb->getPathsInfo(hero.get());
-
-		boost::sort(objs, CDistanceSorter(hero.get()));
-
 		for (auto objToVisit : objs) {
 			const int3 pos = objToVisit->visitablePos();
-			const int3 targetPos = sm->firstTileToGet(hero, pos);
 
-			if (!this->shouldVisitObject(objToVisit, hero, *sm)) {
-				continue;
-			}
+			auto pathInfo = ai->turnData->getChainInfo(pos);
 
-			if (targetPos.x == -1) {
-				return false;
-			}
+			logAi->trace("considering object %s %s", objToVisit->getObjectName(), pos.toString());
 
-			auto pathInfo = pathsInfo->getPathInfo(targetPos);
-			auto checkPos = targetPos;
+			for(const CHeroChainPath & chainPath : pathInfo)
+			{
+				const CHeroChainPathNode & node = chainPath.nodes.back();
+				HeroPtr hero = node.hero;
 
-			if (pathInfo->action == CGPathNode::BLOCKVIS && pathInfo->theNodeBefore) {
-				checkPos = pathInfo->theNodeBefore->coord;
-			}
+				auto sm = ai->getCachedSectorMap(hero);
 
-			auto nearestHero = getNearestHero(heroes, targetPos);
-			if (nearestHero != hero.get() && isSafeToVisit(nearestHero, checkPos)) {
-				logAi->trace("There is %s who is closer to %s. Skipping it.", nearestHero->name, objToVisit->getObjectName());
-				continue;
-			}
+				logAi->trace("Hero %s can rich %s", hero->getObjectName(), objToVisit->getObjectName());
 
-			auto missingArmy = analyzeDanger(hero, checkPos);
-
-			if (!missingArmy) {
-				double priority = 0;
-
-				if (pathInfo->turns == 0) {
-					priority = 1 - (hero->movement - pathInfo->moveRemains) / (double)hero->maxMovePoints(true);
+				if (!this->shouldVisitObject(objToVisit, hero, *sm)) {
+					continue;
 				}
 
-				addTask(tasks, Tasks::VisitTile(targetPos, hero, objToVisit), priority);
+				//auto targetPos = sm->firstTileToGet(hero, pos);
+				auto missingArmy = analyzeDanger(hero, pos);
 
-				return true;
-			}
-			else if(neededArmy == 0 || neededArmy > missingArmy) {
-				neededArmy = missingArmy;
+				if(!missingArmy)
+				{
+					double priority = 1 - node.movementPointsUsed / (double)hero->maxMovePoints(true);
+
+					if(priority < 0)
+						priority = 0;
+					
+					logAi->trace("Hero %s can take %s", hero->getObjectName(), objToVisit->getObjectName());
+
+					if(node.turns == 0)
+					{
+						addTask(tasks, Tasks::VisitTile(pos, hero, objToVisit), priority);
+					}
+
+					break;
+				}
+				else if(neededArmy == 0 || neededArmy > missingArmy)
+				{
+					neededArmy = missingArmy;
+				}
 			}
 		}
 
 		return false;
 	};
 
-	std::vector<const CGHeroInstance*> heroesToScan;
-
-	if (this->hero) {
-		heroesToScan.push_back(this->hero.get());
+	if (specificObjects) {
+		captureObjects(objectsToCapture);
 	}
 	else {
-		heroesToScan = heroes;
+		captureObjects(std::vector<const CGObjectInstance*>(ai->visitableObjs.begin(), ai->visitableObjs.end()));
 	}
 
-	for (auto hero : heroesToScan) {
-		if (specificObjects) {
-			captureObjects(objectsToCapture, hero);
-		}
-		else {
-			auto sm = ai->getCachedSectorMap(hero);
-
-			if (!captureObjects(sm->getNearbyObjs(hero, 1), hero)) {
-				captureObjects(std::vector<const CGObjectInstance*>(ai->visitableObjs.begin(), ai->visitableObjs.end()), hero);
-			}
-		}
-	}
-
-	if (!tasks.size() && this->hero && neededArmy) {
+	/*if (!tasks.size() && neededArmy) {
 		addTasks(tasks, sptr(GatherArmy(neededArmy, forceGatherArmy).sethero(this->hero)));
-	}
-
+	}*/
 	return tasks;
 }
 

@@ -27,10 +27,13 @@ namespace Tasks
 	class VisitTile : public TemplateTask<VisitTile> {
 	private:
 		std::string objInfo;
+		std::string heroInfo;
 	public:
-		VisitTile(int3 tile, HeroPtr hero, const CGObjectInstance* obj = NULL) {
+		VisitTile(int3 tile, HeroPtr hero, const CGObjectInstance* obj = NULL)
+		{
 			this->tile = tile;
 			this->hero = hero;
+			this->heroInfo = hero->name;
 
 			if (obj) {
 				objInfo = obj->getObjectName();
