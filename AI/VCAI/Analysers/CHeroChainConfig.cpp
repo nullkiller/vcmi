@@ -27,6 +27,8 @@ std::vector<CHeroNode *> CVCAIHeroChainConfig::getInitialNodes(CHeroChainInfo & 
 
 		heroNode->moveRemains = hero->movement;
 		heroNode->turns = 0;
+		heroNode->armyValue = hero->getArmyStrength();
+		heroNode->armyLoss = 0;
 
 		result.push_back(heroNode);
 	}
@@ -108,4 +110,57 @@ CHeroNode * CVCAIHeroChainConfig::allocateHeroNode(CHeroChainInfo & paths, int3 
 	}
 
 	return nullptr;
+}
+
+bool CVCAIHeroChainConfig::isBetterWay(CHeroNode * target, CHeroNode * source, int remains, int turn)
+{
+	if(source->armyValue > target->armyValue)
+		return true;
+	else if(target->turns == 0xff) //we haven't been here before
+		return true;
+	else if(target->turns > turn)
+		return true;
+	else if(target->turns >= turn && target->moveRemains < remains) //this route is faster
+		return true;
+
+	return false;
+};
+
+void CVCAIHeroChainConfig::apply(CHeroNode * node, int turns, int remains, CGBaseNode::ENodeAction destAction, CHeroNode * parent)
+{
+	node->moveRemains = remains;
+	node->turns = turns;
+	node->action = destAction;
+
+	if(node->previousActor != parent)
+	{
+		node->previousActor = parent->previousActor;
+		node->armyValue = parent->armyValue;
+		node->armyLoss = parent->armyLoss;
+	}
+}
+
+CHeroNode * CVCAIHeroChainConfig::tryBypassObject(CHeroChainInfo & paths, CHeroNode * node, const CGObjectInstance * obj)
+{
+	auto hero = getNodeHero(paths, node);
+
+	if(obj && obj->ID == Obj::MONSTER)
+	{
+		auto monsterNode = allocateHeroNode(paths, obj->visitablePos(), node->layer, node->mask, node->actorNumber);
+		auto battleNode = allocateHeroNode(paths,node->coord, node->layer, node->mask | BATTLE_NODE, node->actorNumber);
+		auto loss = evaluateLoss(hero, monsterNode->coord, monsterNode->armyValue);
+
+		if(monsterNode != nullptr && monsterNode->action != CGBaseNode::ENodeAction::UNKNOWN
+			&& battleNode != nullptr && battleNode != monsterNode && battleNode->action == CGBaseNode::ENodeAction::UNKNOWN
+			&& monsterNode->armyValue > loss)
+		{
+			battleNode->armyLoss = monsterNode->armyLoss + loss;
+			battleNode->previousActor = monsterNode;
+			battleNode->armyValue = monsterNode->armyValue - loss;
+
+			return battleNode;
+		}
+	}
+
+	return nullptr; // not supported by regular pathfinder
 }

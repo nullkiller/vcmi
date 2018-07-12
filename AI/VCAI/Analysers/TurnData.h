@@ -19,6 +19,10 @@ struct CHeroChainPathNode
 	int movementPointsLeft;
 	int movementPointsUsed;
 	int turns;
+	uint64_t armyLoss;
+	uint64_t armyValue;
+	CGBaseNode::ENodeAction action;
+	EPathfindingLayer layer;
 };
 
 struct CHeroChainPath

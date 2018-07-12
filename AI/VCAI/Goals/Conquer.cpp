@@ -44,7 +44,7 @@ Tasks::TaskList Conquer::getTasks() {
 		return tasks;
 	}
 
-	addTasks(tasks, sptr(GatherArmy()), 0.7); // no hero - just pickup existing army, no buy
+	addTasks(tasks, sptr(GatherArmy()), 0.7, 0.8); // no hero - just pickup existing army, no buy
 	addTasks(tasks, sptr(CaptureObjects()), 0, 1);
 
 	for (auto nextHero : heroes) {
@@ -57,6 +57,7 @@ Tasks::TaskList Conquer::getTasks() {
 
 		logAi->trace("Considering tasks for hero %s", nextHero->name);
 
+		//addTasks(tasks, sptr(Defence().sethero(heroPtr)), 1);
 
 		const CGHeroInstance* strongestHero = heroes.at(0);
 

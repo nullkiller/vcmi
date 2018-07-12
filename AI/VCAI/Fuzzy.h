@@ -10,6 +10,7 @@
 #pragma once
 #include "fl/Headers.h"
 #include "Goals/Goal.h"
+#include "Tasks/ExecuteChain.h"
 
 class VCAI;
 class CArmedInstance;
@@ -45,7 +46,7 @@ class FuzzyHelper
 	class EvalVisitTile : public engineBase
 	{
 	public:
-		fl::InputVariable * strengthRatio;
+		fl::InputVariable * armyLossPersentage;
 		fl::InputVariable * heroStrength;
 		fl::InputVariable * turnDistance;
 		fl::InputVariable * missionImportance;
@@ -66,7 +67,7 @@ public:
 	void initVisitTile();
 
 	float evaluate(Goals::RecruitHero & g);
-	float evaluate(Goals::VisitTile & g);
+	float evaluate(Tasks::ExecuteChain * task, const CGHeroInstance * hero, const CGObjectInstance * target);
 	float evaluate(Goals::VisitHero & g);
 	float evaluate(Goals::BuildThis & g);
 	float evaluate(Goals::DigAtTile & g);

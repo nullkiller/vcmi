@@ -643,10 +643,6 @@ void AbstractGoal::addTasks(Tasks::TaskList &target, TSubgoal subgoal, double pr
 	logAi->trace("Searching tasks for %s", subgoal->toString());
 	auto tasks = subgoal->getTasks();
 
-	if (priorityMax == 0) {
-		priorityMax = priorityMin + 0.1;
-	}
-
 	for (Tasks::TaskPtr t : tasks) {
 		t->addAncestorPriority(priorityMin, priorityMax);
 		logAi->trace("Task found %s", t->toString());
@@ -654,10 +650,10 @@ void AbstractGoal::addTasks(Tasks::TaskList &target, TSubgoal subgoal, double pr
 	}
 }
 
-void AbstractGoal::addTask(Tasks::TaskList &target, const Tasks::CTask &task, double priority) {
+void AbstractGoal::addTask(Tasks::TaskList &target, const Tasks::CTask &task, double priorityMin, double priorityMax) {
 	auto taskPtr = Tasks::sptr(task);
 	if (taskPtr->canExecute()) {
-		taskPtr->addAncestorPriority(priority, priority + 0.1);
+		taskPtr->addAncestorPriority(priorityMin, priorityMax);
 		logAi->trace("Task found %s", taskPtr->toString());
 		target.push_back(taskPtr);
 	}

@@ -24,6 +24,7 @@ struct CHeroChainActor
 class CVCAIHeroChainConfig : public CHeroChainConfig
 {
 public:
+	static const uint32_t BATTLE_NODE = 0x80000000;
 	std::vector<CHeroChainActor> actors;
 
 	CVCAIHeroChainConfig(PlayerColor owner)
@@ -38,6 +39,12 @@ public:
 	const CGHeroInstance * getNodeHero(const CHeroChainInfo & pathsInfo, const CHeroNode * source) const;
 
 	void updateNode(CHeroChainInfo & pathsInfo, const int3 & coord, const EPathfindingLayer layer, const CGBaseNode::EAccessibility accessible);
+
+	bool isBetterWay(CHeroNode * target, CHeroNode * source, int remains, int turn);
+
+	void apply(CHeroNode * node, int turns, int remains, CGBaseNode::ENodeAction destAction, CHeroNode * parent);
+
+	CHeroNode * tryBypassObject(CHeroChainInfo & paths, CHeroNode * node, const CGObjectInstance * obj);
 
 	void addHero(const CGHeroInstance * hero);
 	

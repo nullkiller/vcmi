@@ -212,14 +212,21 @@ ui64 evaluateDanger(crint3 tile)
 	return std::max(objectDanger, guardDanger);
 }
 
-ui64 evaluateDanger(crint3 tile, const CGHeroInstance * visitor)
+uint64_t evaluateLoss(HeroPtr visitor, crint3 tile, uint64_t heroPower)
 {
 	const TerrainTile * t = cb->getTile(tile, false);
 	if(!t) //we can know about guard but can't check its tile (the edge of fow)
-		return 190000000; //MUCH
+		return heroPower; // we might loose all power
 
-	ui64 objectDanger = 0;
-	ui64 guardDanger = 0;
+	double danger = 0;
+	ui64 loss = 0;
+
+	auto estimateLoss = [](double strength, double danger) -> double
+	{
+		auto ratio = danger / strength;
+
+		return ratio * ratio * ratio * strength;
+	};
 
 	auto visitableObjects = cb->getVisitableObjs(tile);
 	// in some scenarios hero happens to be "under" the object (eg town). Then we consider ONLY the hero.
@@ -233,17 +240,20 @@ ui64 evaluateDanger(crint3 tile, const CGHeroInstance * visitor)
 
 	if(const CGObjectInstance * dangerousObject = vstd::backOrNull(visitableObjects))
 	{
-		objectDanger = evaluateDanger(dangerousObject); //unguarded objects can also be dangerous or unhandled
-		if(objectDanger)
+		danger = evaluateDanger(dangerousObject); //unguarded objects can also be dangerous or unhandled
+		if(danger)
 		{
 			//TODO: don't downcast objects AI shouldn't know about!
 			auto armedObj = dynamic_cast<const CArmedInstance *>(dangerousObject);
 			if(armedObj)
 			{
-				float tacticalAdvantage = fh->getTacticalAdvantage(visitor, armedObj);
-				objectDanger *= tacticalAdvantage; //this line tends to go infinite for allied towns (?)
+				float tacticalAdvantage = fh->getTacticalAdvantage(visitor.get(), armedObj);
+				danger *= tacticalAdvantage; //this line tends to go infinite for allied towns (?)
 			}
+
+			loss += estimateLoss(heroPower, danger);
 		}
+
 		if(dangerousObject->ID == Obj::SUBTERRANEAN_GATE)
 		{
 			//check guard on the other side of the gate
@@ -253,7 +263,8 @@ ui64 evaluateDanger(crint3 tile, const CGHeroInstance * visitor)
 				auto guards = cb->getGuardingCreatures(it->second->visitablePos());
 				for(auto cre : guards)
 				{
-					vstd::amax(guardDanger, evaluateDanger(cre) * fh->getTacticalAdvantage(visitor, dynamic_cast<const CArmedInstance *>(cre)));
+					danger = evaluateDanger(cre) * fh->getTacticalAdvantage(visitor.get(), dynamic_cast<const CArmedInstance *>(cre));
+					loss += estimateLoss(heroPower - loss, danger);
 				}
 			}
 		}
@@ -262,11 +273,16 @@ ui64 evaluateDanger(crint3 tile, const CGHeroInstance * visitor)
 	auto guards = cb->getGuardingCreatures(tile);
 	for(auto cre : guards)
 	{
-		vstd::amax(guardDanger, evaluateDanger(cre) * fh->getTacticalAdvantage(visitor, dynamic_cast<const CArmedInstance *>(cre))); //we are interested in strongest monster around
+		danger = evaluateDanger(cre) * fh->getTacticalAdvantage(visitor.get(), dynamic_cast<const CArmedInstance *>(cre));
+		loss += estimateLoss(heroPower - loss, danger);
 	}
 
-	//TODO mozna odwiedzic blockvis nie ruszajac straznika
-	return std::max(objectDanger, guardDanger);
+	return loss;
+}
+
+ui64 evaluateDanger(crint3 tile, const CGHeroInstance * visitor)
+{
+	return evaluateLoss(visitor, tile, visitor->getArmyStrength());
 }
 
 ui64 evaluateDanger(const CGObjectInstance * obj)

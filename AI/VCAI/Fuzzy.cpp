@@ -325,7 +325,7 @@ float FuzzyHelper::evaluate(Goals::RecruitHero & g)
 }
 FuzzyHelper::EvalVisitTile::~EvalVisitTile()
 {
-	delete strengthRatio;
+	delete armyLossPersentage;
 	delete heroStrength;
 	delete turnDistance;
 	delete missionImportance;
@@ -336,7 +336,7 @@ void FuzzyHelper::initVisitTile()
 {
 	try
 	{
-		vt.strengthRatio = new fl::InputVariable("strengthRatio"); //hero must be strong enough to defeat guards
+		vt.armyLossPersentage = new fl::InputVariable("armyLoss"); //hero must be strong enough to defeat guards
 		vt.heroStrength = new fl::InputVariable("heroStrength"); //we want to use weakest possible hero
 		vt.turnDistance = new fl::InputVariable("turnDistance"); //we want to use hero who is near
 		vt.missionImportance = new fl::InputVariable("lockedMissionImportance"); //we may want to preempt hero with low-priority mission
@@ -345,16 +345,17 @@ void FuzzyHelper::initVisitTile()
 		vt.value->setMinimum(0);
 		vt.value->setMaximum(5);
 
-		std::vector<fl::InputVariable *> helper = {vt.strengthRatio, vt.heroStrength, vt.turnDistance, vt.missionImportance, vt.estimatedReward};
+		std::vector<fl::InputVariable *> helper = {vt.armyLossPersentage, vt.heroStrength, vt.turnDistance, vt.missionImportance, vt.estimatedReward};
 		for(auto val : helper)
 		{
 			vt.engine.addInputVariable(val);
 		}
 		vt.engine.addOutputVariable(vt.value);
 
-		vt.strengthRatio->addTerm(new fl::Ramp("LOW", SAFE_ATTACK_CONSTANT, 0));
-		vt.strengthRatio->addTerm(new fl::Ramp("HIGH", SAFE_ATTACK_CONSTANT, SAFE_ATTACK_CONSTANT * 3));
-		vt.strengthRatio->setRange(0, SAFE_ATTACK_CONSTANT * 3);
+		vt.armyLossPersentage->addTerm(new fl::Ramp("LOW", 0.2, 0));
+		vt.armyLossPersentage->addTerm(new fl::Triangle("MEDIUM", 0.1, 0.3));
+		vt.armyLossPersentage->addTerm(new fl::Ramp("HIGH", 0.2, 1));
+		vt.armyLossPersentage->setRange(0, 1);
 
 		//strength compared to our main hero
 		vt.heroStrength->addTerm(new fl::Ramp("LOW", 0.2, 0));
@@ -362,9 +363,9 @@ void FuzzyHelper::initVisitTile()
 		vt.heroStrength->addTerm(new fl::Ramp("HIGH", 0.5, 1));
 		vt.heroStrength->setRange(0.0, 1.0);
 
-		vt.turnDistance->addTerm(new fl::Ramp("SMALL", 0.5, 0));
-		vt.turnDistance->addTerm(new fl::Triangle("MEDIUM", 0.1, 0.8));
-		vt.turnDistance->addTerm(new fl::Ramp("LONG", 0.5, 3));
+		vt.turnDistance->addTerm(new fl::Ramp("SMALL", 0.4, 0.1));
+		vt.turnDistance->addTerm(new fl::Triangle("MEDIUM", 0.2, 0.8));
+		vt.turnDistance->addTerm(new fl::Ramp("LONG", 0.5, 1.5));
 		vt.turnDistance->setRange(0.0, 3.0);
 
 		vt.missionImportance->addTerm(new fl::Ramp("LOW", 2.5, 0));
@@ -384,24 +385,21 @@ void FuzzyHelper::initVisitTile()
 		vt.value->setRange(0.0, 5.0);
 
 		//use unarmed scouts if possible
-		vt.addRule("if strengthRatio is HIGH and heroStrength is LOW then Value is very HIGH");
+		vt.addRule("if armyLoss is LOW then Value is MEDIUM");
+		vt.addRule("if armyLoss is MEDIUM then Value is LOW");
+		vt.addRule("if armyLoss is HIGH then Value is very LOW");
 		//we may want to use secondary hero(es) rather than main hero
-		vt.addRule("if strengthRatio is HIGH and heroStrength is MEDIUM then Value is somewhat HIGH");
-		vt.addRule("if strengthRatio is HIGH and heroStrength is HIGH then Value is somewhat LOW");
-		//don't assign targets to heroes who are too weak, but prefer targets of our main hero (in case we need to gather army)
-		vt.addRule("if strengthRatio is LOW and heroStrength is LOW then Value is very LOW");
-		//attempt to arm secondary heroes is not stupid
-		vt.addRule("if strengthRatio is LOW and heroStrength is MEDIUM then Value is somewhat HIGH");
-		vt.addRule("if strengthRatio is LOW and heroStrength is HIGH then Value is LOW");
 
 		//do not cancel important goals
 		vt.addRule("if lockedMissionImportance is HIGH then Value is very LOW");
 		vt.addRule("if lockedMissionImportance is MEDIUM then Value is somewhat LOW");
 		vt.addRule("if lockedMissionImportance is LOW then Value is HIGH");
+
 		//pick nearby objects if it's easy, avoid long walks
 		vt.addRule("if turnDistance is SMALL then Value is HIGH");
 		vt.addRule("if turnDistance is MEDIUM then Value is MEDIUM");
-		vt.addRule("if turnDistance is LONG then Value is LOW");
+		vt.addRule("if turnDistance is LONG then Value is very LOW");
+
 		//some goals are more rewarding by definition f.e. capturing town is more important than collecting resource - experimental
 		vt.addRule("if estimatedReward is HIGH then Value is very HIGH");
 		vt.addRule("if estimatedReward is LOW then Value is somewhat LOW");
@@ -412,63 +410,78 @@ void FuzzyHelper::initVisitTile()
 	}
 }
 
-float FuzzyHelper::evaluate(Goals::VisitTile & g)
+/// Gets aproximated reward in gold. Daily income is multiplied by 5
+int32_t getGoldReward(const CGObjectInstance * target, const CGHeroInstance * hero)
 {
-	//we assume that hero is already set and we want to choose most suitable one for the mission
-	if(!g.hero)
-		return 0;
+	const int dailyIncomeMultiplier = 5;
+	auto relations = cb->getPlayerRelations(hero->tempOwner, target->tempOwner);
+	auto isGold = target->subID == Res::GOLD; // TODO: other resorces could be sold but need to evaluate market power
 
-	//assert(cb->isInTheMap(g.tile));
-	float turns = 0;
-	float distance = CPathfinderHelper::getMovementCost(g.hero.h, g.tile);
-	if(!distance) //we stand on that tile
+	switch(target->ID)
 	{
-		turns = 0;
-	}
-	else
-	{
-		if(distance < g.hero->movement) //we can move there within one turn
-			turns = (fl::scalar)distance / g.hero->movement;
-		else
-			turns = 1 + (fl::scalar)(distance - g.hero->movement) / g.hero->maxMovePoints(true); //bool on land?
-	}
+	case Obj::RESOURCE:
+		return isGold ? 800 : 100;
+	case Obj::TREASURE_CHEST:
+		return 1500;
+	case Obj::WATER_WHEEL:
+		return 1000;
+	case Obj::TOWN:
+		if(relations != PlayerRelations::ENEMIES)
+			return 0; // if we already own it, no additional reward will be received by just visiting it
+		
+		auto town = cb->getTown(target->id);
+		auto isNeutral = target->tempOwner == PlayerColor::NEUTRAL;
+		auto isProbablyDeveloped = !isNeutral && town->hasFort();
 
-	float missionImportance = 0;
-
-	float strengthRatio = 10.0f; //we are much stronger than enemy
-	ui64 danger = evaluateDanger(g.tile, g.hero.h);
-	if(danger)
-		strengthRatio = (fl::scalar)g.hero.h->getTotalStrength() / danger;
-
-	float tilePriority = 0;
-	if(g.objid == -1)
-	{
-		vt.estimatedReward->setEnabled(false);
+		return dailyIncomeMultiplier * (isProbablyDeveloped ? 1500 : 500);
+	case Obj::MINE:
+		return dailyIncomeMultiplier * (isGold ? 1000 : 75);
+	default:
+		break;
 	}
-	else if(g.objid == Obj::TOWN) //TODO: move to getObj eventually and add appropiate logic there
-	{
-		vt.estimatedReward->setEnabled(true);
-		tilePriority = 5;
-	}
+}
+
+/// distance
+/// nearest hero?
+/// gold income
+/// army income
+/// hero strength - hero skills
+/// danger
+/// importance
+float FuzzyHelper::evaluate(Tasks::ExecuteChain * task, const CGHeroInstance * hero, const CGObjectInstance * target)
+{
+	double missionImportance = 0;
+	double armyLossPersentage = task->armyLoss / (double)task->armyTotal;
+	double tilePriority = 0;
+	double result = 0;
+
+	vt.estimatedReward->setEnabled(false);
 
 	try
 	{
-		vt.strengthRatio->setValue(strengthRatio);
-		vt.heroStrength->setValue((fl::scalar)g.hero->getTotalStrength() / ai->primaryHero()->getTotalStrength());
-		vt.turnDistance->setValue(turns);
+		vt.armyLossPersentage->setValue(armyLossPersentage);
+		vt.heroStrength->setValue((fl::scalar)hero->getTotalStrength() / ai->primaryHero()->getTotalStrength());
+		vt.turnDistance->setValue(task->turns);
 		vt.missionImportance->setValue(missionImportance);
 		vt.estimatedReward->setValue(tilePriority);
 
 		vt.engine.process();
 		//engine.process(VISIT_TILE); //TODO: Process only Visit_Tile
-		g.priority = vt.value->getValue();
+		result = vt.value->getValue() / 5;
 	}
 	catch(fl::Exception & fe)
 	{
 		logAi->error("evaluate VisitTile: %s", fe.getWhat());
 	}
-	assert(g.priority >= 0);
-	return g.priority;
+	assert(result >= 0);
+
+	logAi->trace("Evaluated %s, loaa: %f, turns: %f, result %f",
+		task->toString(),
+		armyLossPersentage,
+		task->turns,
+		result);
+
+	return result;
 }
 float FuzzyHelper::evaluate(Goals::VisitHero & g)
 {

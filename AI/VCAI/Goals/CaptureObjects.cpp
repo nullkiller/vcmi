@@ -9,13 +9,12 @@
  */
 #include "StdInc.h"
 #include "CaptureObjects.h"
-#include "GatherArmy.h"
 #include "../VCAI.h"
 #include "../AIUtility.h"
 #include "../SectorMap.h"
 #include "lib/mapping/CMap.h" //for victory conditions
 #include "lib/CPathfinder.h"
-#include "../Tasks/VisitTile.h"
+#include "../Tasks/ExecuteChain.h"
 #include "../Tasks/BuildStructure.h"
 #include "../Tasks/RecruitHero.h"
 
@@ -30,13 +29,10 @@ std::string CaptureObjects::toString() const {
 
 Tasks::TaskList CaptureObjects::getTasks() {
 	Tasks::TaskList tasks;
-
-	auto neededArmy = 0;
-	auto heroes = cb->getHeroesInfo();
 	
-	auto captureObjects = [&](std::vector<const CGObjectInstance*> objs) -> bool {
+	auto captureObjects = [&](std::vector<const CGObjectInstance*> objs) -> void {
 		if (objs.empty()) {
-			return false;
+			return;
 		}
 
 		for (auto objToVisit : objs) {
@@ -48,10 +44,27 @@ Tasks::TaskList CaptureObjects::getTasks() {
 
 			for(const CHeroChainPath & chainPath : pathInfo)
 			{
-				const CHeroChainPathNode & node = chainPath.nodes.back();
+				const CHeroChainPathNode & node = chainPath.nodes.front();
 				HeroPtr hero = node.hero;
 
 				auto sm = ai->getCachedSectorMap(hero);
+				auto armyLoss = node.armyLoss;
+				auto totalArmy = node.armyLoss + node.armyValue;
+				
+				if(node.action != CGBaseNode::ENodeAction::BLOCKING_VISIT)
+					armyLoss += evaluateLoss(hero, objToVisit->visitablePos(), node.armyValue);
+
+				if(armyLoss > node.armyValue) // we lost 50% or more
+				{
+					logAi->trace(
+						"Hero %s can rich %s but he is too week. Estimated loss is %d of %d", 
+						hero->getObjectName(), 
+						objToVisit->getObjectName(),
+						armyLoss,
+						totalArmy);
+
+					continue;
+				}
 
 				logAi->trace("Hero %s can rich %s", hero->getObjectName(), objToVisit->getObjectName());
 
@@ -59,33 +72,11 @@ Tasks::TaskList CaptureObjects::getTasks() {
 					continue;
 				}
 
-				//auto targetPos = sm->firstTileToGet(hero, pos);
-				auto missingArmy = analyzeDanger(hero, pos);
+				logAi->trace("Hero %s should take %s", hero->getObjectName(), objToVisit->getObjectName());
 
-				if(!missingArmy)
-				{
-					double priority = 1 - node.movementPointsUsed / (double)hero->maxMovePoints(true);
-
-					if(priority < 0)
-						priority = 0;
-					
-					logAi->trace("Hero %s can take %s", hero->getObjectName(), objToVisit->getObjectName());
-
-					if(node.turns == 0)
-					{
-						addTask(tasks, Tasks::VisitTile(pos, hero, objToVisit), priority);
-					}
-
-					break;
-				}
-				else if(neededArmy == 0 || neededArmy > missingArmy)
-				{
-					neededArmy = missingArmy;
-				}
+				addTask(tasks, Tasks::ExecuteChain(chainPath, totalArmy, armyLoss, objToVisit));
 			}
 		}
-
-		return false;
 	};
 
 	if (specificObjects) {
@@ -95,9 +86,6 @@ Tasks::TaskList CaptureObjects::getTasks() {
 		captureObjects(std::vector<const CGObjectInstance*>(ai->visitableObjs.begin(), ai->visitableObjs.end()));
 	}
 
-	/*if (!tasks.size() && neededArmy) {
-		addTasks(tasks, sptr(GatherArmy(neededArmy, forceGatherArmy).sethero(this->hero)));
-	}*/
 	return tasks;
 }
 

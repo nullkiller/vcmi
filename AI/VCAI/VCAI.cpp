@@ -748,7 +748,7 @@ void VCAI::makeTurnInternal()
 
 	try
 	{
-
+		turnData->update();
 		auto goal = Goals::sptr(Goals::Win());
 		Tasks::TaskList tasks = goal->getTasks();
 

@@ -31,6 +31,11 @@ std::vector<CHeroChainPath> TurnData::getChainInfo(int3 pos)
 
 	for(const CHeroNode & node : chains)
 	{
+		if(node.action == CGBaseNode::ENodeAction::UNKNOWN)
+		{
+			continue;
+		}
+
 		auto path = CHeroChainPath();
 		auto pathNode = CHeroChainPathNode();
 
@@ -38,6 +43,11 @@ std::vector<CHeroChainPath> TurnData::getChainInfo(int3 pos)
 		pathNode.movementPointsLeft = node.moveRemains;
 		pathNode.movementPointsUsed = (int)(node.turns * pathNode.hero->maxMovePoints(true) + pathNode.hero->movement) - (int)node.moveRemains;
 		pathNode.turns = node.turns;
+		pathNode.armyLoss = node.armyLoss;
+		pathNode.armyValue = node.armyValue;
+		pathNode.action = node.action;
+		pathNode.layer = node.layer;
+		pathNode.targetPosition = node.coord;
 		
 		path.nodes.push_back(pathNode);
 		paths.push_back(path);

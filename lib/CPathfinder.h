@@ -78,9 +78,12 @@ public:
 
 struct DLL_LINKAGE CHeroNode : public CGBaseNode
 {
-	CHeroNode * theNodeBefore;
-	int mask;
-	int actorNumber;
+	CHeroNode * previousActor;
+	uint32_t mask;
+	uint8_t actorNumber;
+	uint64_t armyValue;
+	uint64_t armyLoss;
+
 	void reset();
 	void update(const int3 & Coord, const EPathfindingLayer Layer, const EAccessibility Accessible);
 	void lock() {}
@@ -328,6 +331,12 @@ public:
 	virtual const CGHeroInstance * getNodeHero(const CHeroChainInfo & pathsInfo, const CHeroNode *) const = 0;
 
 	virtual void updateNode(CHeroChainInfo & pathsInfo, const int3 & coord, const EPathfindingLayer layer, const CGBaseNode::EAccessibility accessible) = 0;
+
+	virtual bool isBetterWay(CHeroNode * target, CHeroNode * source, int remains, int turns) = 0;
+
+	virtual void apply(CHeroNode * node, int turns, int remains, CGBaseNode::ENodeAction destAction, CHeroNode * parent) = 0;
+
+	virtual CHeroNode * tryBypassObject(CHeroChainInfo & paths, CHeroNode * node, const CGObjectInstance * obj) = 0;
 
 	bool isHeroPatrolLocked() const
 	{

@@ -27,6 +27,7 @@ set(VCAI_SRCS
 		Tasks/RecruitHero.cpp
 		Tasks/BuildStructure.cpp
 		Tasks/VisitTile.cpp
+		Tasks/ExecuteChain.cpp
 		Tasks/BuyArmyInTown.cpp
 		VCAI.cpp
 		main.cpp
@@ -54,6 +55,7 @@ set(VCAI_HEADERS
 		Tasks/RecruitHero.h
 		Tasks/BuildStructure.h
 		Tasks/VisitTile.h
+		Tasks/ExecuteChain.h
 		Tasks/BuyArmyInTown.h
 		VCAI.h
 )

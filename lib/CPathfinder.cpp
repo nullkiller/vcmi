@@ -86,6 +86,32 @@ public:
 		pathsInfo.getNode(coord, layer)->update(coord, layer, accessible);
 	}
 
+	bool isBetterWay(CGPathNode * dp, CGPathNode * cp, int remains, int turn)
+	{
+		if(dp->turns == 0xff) //we haven't been here before
+			return true;
+		else if(dp->turns > turn)
+			return true;
+		else if(dp->turns >= turn && dp->moveRemains < remains) //this route is faster
+			return true;
+
+		return false;
+	};
+
+	void apply(CGPathNode * node, int turns, int remains, CGBaseNode::ENodeAction destAction, CGPathNode * parent)
+	{
+		assert(node != parent->theNodeBefore); //two tiles can't point to each other
+		node->moveRemains = remains;
+		node->turns = turns;
+		node->action = destAction;
+		node->theNodeBefore = parent;
+	}
+
+	CGPathNode * tryBypassObject(CPathsInfo & pathsInfo, CGPathNode * node, const CGObjectInstance * obj)
+	{
+		return nullptr; // not supported by regular pathfinder
+	}
+
 	bool isHeroPatrolLocked() const
 	{
 		return patrolState == PATROL_LOCKED;
@@ -198,18 +224,6 @@ void TPathfinder<TPathsInfo, TPathNode, TNodeHelper>::calculatePaths()
 		return true;
 	};
 
-	auto isBetterWay = [&](int remains, int turn) -> bool
-	{
-		if(dp->turns == 0xff) //we haven't been here before
-			return true;
-		else if(dp->turns > turn)
-			return true;
-		else if(dp->turns >= turn && dp->moveRemains < remains) //this route is faster
-			return true;
-
-		return false;
-	};
-
 	//logGlobal->info("Calculating paths for hero %s (adress  %d) of player %d", hero->name, hero , hero->tempOwner);
 
 	//initial tile - set cost on 0 and add to the queue
@@ -283,7 +297,12 @@ void TPathfinder<TPathsInfo, TPathNode, TNodeHelper>::calculatePaths()
 						continue;
 
 					if(!isMovementToDestPossible(hero))
-						continue;
+					{
+						dp = nodeHelper->tryBypassObject(out, dp, ctObj);
+
+						if(dp == nullptr)
+							continue;
+					}
 
 					destAction = getDestAction();
 					int turnAtNextTile = turn, moveAtNextTile = movement;
@@ -305,17 +324,24 @@ void TPathfinder<TPathsInfo, TPathNode, TNodeHelper>::calculatePaths()
 						cost = moveAtNextTile - remains;
 					}
 
-					if(isBetterWay(remains, turnAtNextTile) &&
+					if(nodeHelper->isBetterWay(dp, cp, remains, turnAtNextTile) &&
 						((cp->turns == turnAtNextTile && remains) || passOneTurnLimitCheck()))
 					{
-						assert(dp != cp->theNodeBefore); //two tiles can't point to each other
-						dp->moveRemains = remains;
-						dp->turns = turnAtNextTile;
-						dp->theNodeBefore = cp;
-						dp->action = destAction;
+						nodeHelper->apply(dp, turnAtNextTile, remains, destAction, cp);
 
 						if(isMovementAfterDestPossible(hero, hlp))
+						{
 							pq.push(dp);
+						}
+						else
+						{
+							TPathNode * bypassNode = nodeHelper->tryBypassObject(out, dp, dtObj);
+
+							if(bypassNode != nullptr)
+							{
+								pq.push(dp);
+							}
+						}
 					}
 				}
 			}
@@ -340,14 +366,12 @@ void TPathfinder<TPathsInfo, TPathNode, TNodeHelper>::calculatePaths()
 				if(dp->accessible == CGPathNode::BLOCKED)
 					continue;
 
-				if(isBetterWay(movement, turn))
+				if(nodeHelper->isBetterWay(dp, cp, movement, turn))
 				{
 					dtObj = gs->map->getTile(neighbour).topVisitableObj();
 
-					dp->moveRemains = movement;
-					dp->turns = turn;
-					dp->theNodeBefore = cp;
-					dp->action = getTeleportDestAction();
+					nodeHelper->apply(dp, turn, movement, getTeleportDestAction(), cp);
+
 					if(dp->action == CGPathNode::TELEPORT_NORMAL)
 						pq.push(dp);
 				}
@@ -1349,7 +1373,9 @@ void CHeroNode::reset()
 	action = UNKNOWN;
 	mask = 0;
 	actorNumber = 0;
-	theNodeBefore = nullptr;
+	previousActor = nullptr;
+	armyValue = 0;
+	armyLoss = 0;
 }
 
 void CHeroNode::update(const int3 & Coord, const EPathfindingLayer Layer, const EAccessibility Accessible)
