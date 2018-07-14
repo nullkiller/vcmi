@@ -171,6 +171,8 @@ public:
 	CBankInfo(const JsonVector & Config);
 
 	TPossibleGuards getPossibleGuards() const;
+	TResources getPossibleResourcesReward() const;
+	std::vector<CStackBasicDescriptor> CBankInfo::getPossibleCreaturesReward() const;
 
 	// These functions should try to evaluate minimal possible/max possible guards to give provide information on possible thread to AI
 	CArmyStructure minGuards() const override;

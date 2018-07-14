@@ -420,7 +420,8 @@ Tasks::TaskList RecruitHero::getTasks() {
 	auto towns = cb->getTownsInfo();
 
 	if (cb->getResourceAmount(Res::GOLD) > GameConstants::HERO_GOLD_COST * 3
-		&& heroes.size() < towns.size() + 1) 
+		&& heroes.size() < towns.size() + 1
+		|| cb->getDate(Date::EDateType::DAY) == 1 && cb->getResourceAmount(Res::GOLD) > GameConstants::HERO_GOLD_COST * 2)
 	{
 		if (const CGTownInstance * t = findTownWithTavern())
 		{

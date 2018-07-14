@@ -39,8 +39,9 @@ std::vector<CHeroNode *> CVCAIHeroChainConfig::getInitialNodes(CHeroChainInfo & 
 std::vector<CHeroNode *> CVCAIHeroChainConfig::getNextNodes(CHeroChainInfo & pathsInfo, CHeroNode * source, int3 targetTile, EPathfindingLayer layer)
 {
 	std::vector<CHeroNode *> result;
+	auto singleHero = (source->mask & (~BATTLE_NODE)) == (1 << source->actorNumber);
 
-	if(source->turns > 1)
+	if(source->turns > 1 && !singleHero)
 	{
 		return result; // restrict scan depth
 	}

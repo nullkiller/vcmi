@@ -50,7 +50,8 @@ class FuzzyHelper
 		fl::InputVariable * heroStrength;
 		fl::InputVariable * turnDistance;
 		fl::InputVariable * missionImportance;
-		fl::InputVariable * estimatedReward;
+		fl::InputVariable * goldReward;
+		fl::InputVariable * armyReward;
 		fl::OutputVariable * value;
 		fl::RuleBlock rules;
 		~EvalVisitTile();

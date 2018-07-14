@@ -414,6 +414,40 @@ TPossibleGuards CBankInfo::getPossibleGuards() const
 	return out;
 }
 
+TResources CBankInfo::getPossibleResourcesReward() const
+{
+	for(const JsonNode & configEntry : config)
+	{
+		const JsonNode & resourcesInfo = configEntry["reward"]["resources"];
+		
+		if(!resourcesInfo.isNull())
+			return TResources(resourcesInfo);
+	}
+
+	return TResources();
+}
+
+std::vector<CStackBasicDescriptor> CBankInfo::getPossibleCreaturesReward() const
+{
+	std::vector<CStackBasicDescriptor> aproximateReward;
+
+	for(const JsonNode & configEntry : config)
+	{
+		const JsonNode & guardsInfo = configEntry["creatures"];
+		auto stacks = JsonRandom::evaluateCreatures(guardsInfo);
+
+		for(auto stack : stacks)
+		{
+			auto creature = stack.allowedCreatures.front();
+			auto stackInfo = CStackBasicDescriptor(creature, (stack.minAmount + stack.maxAmount) / 2);
+
+			aproximateReward.push_back(stackInfo);
+		}
+	}
+
+	return aproximateReward;
+}
+
 bool CBankInfo::givesResources() const
 {
 	for (const JsonNode & node : config)

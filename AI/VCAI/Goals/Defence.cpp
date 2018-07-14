@@ -41,18 +41,16 @@ Tasks::TaskList Defence::getTasks() {
 		return tasks;
 	}
 
-	if (this->hero) {
-		std::vector<const CGObjectInstance*> enemyHeroObjects = std::vector<const CGObjectInstance*>(
-			enemyHeroes.begin(),
-			enemyHeroes.end());
-
-		addTasks(tasks, sptr(CaptureObjects(enemyHeroObjects).sethero(this->hero)), 0, 1);
-	}
-
 	if (myHeroes.empty()) {
 		//addTask(tasks, Tasks::RecruitHero(), 0);
 		return tasks;
 	}
+
+	std::vector<const CGObjectInstance*> enemyHeroObjects = std::vector<const CGObjectInstance*>(
+		enemyHeroes.begin(),
+		enemyHeroes.end());
+
+	addTasks(tasks, sptr(CaptureObjects(enemyHeroObjects)), 0, 1);
 
 	// lets process heroes according their army strength in descending order
 	std::sort(myHeroes.begin(), myHeroes.end(), isLevelHigher);
@@ -70,7 +68,7 @@ Tasks::TaskList Defence::getTasks() {
 
 	if (dangerStrength > heroStrength * SAFE_ATTACK_CONSTANT) {
 		// we are weeker, defence
-		addTasks(tasks, sptr(CaptureObjects(enemyStrongestHero).withForce().sethero(ourStrongestHero)), 0.9);
+		addTasks(tasks, sptr(CaptureObjects(enemyStrongestHero)), 0.9);
 
 		addTasks(tasks, sptr(Build(false)), 0.1);
 		ai->saving = 0;

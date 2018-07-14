@@ -329,7 +329,7 @@ FuzzyHelper::EvalVisitTile::~EvalVisitTile()
 	delete heroStrength;
 	delete turnDistance;
 	delete missionImportance;
-	delete estimatedReward;
+	delete goldReward;
 }
 
 void FuzzyHelper::initVisitTile()
@@ -340,12 +340,13 @@ void FuzzyHelper::initVisitTile()
 		vt.heroStrength = new fl::InputVariable("heroStrength"); //we want to use weakest possible hero
 		vt.turnDistance = new fl::InputVariable("turnDistance"); //we want to use hero who is near
 		vt.missionImportance = new fl::InputVariable("lockedMissionImportance"); //we may want to preempt hero with low-priority mission
-		vt.estimatedReward = new fl::InputVariable("estimatedReward"); //indicate AI that content of the file is important or it is probably bad
+		vt.goldReward = new fl::InputVariable("goldReward"); //indicate AI that content of the file is important or it is probably bad
+		vt.armyReward = new fl::InputVariable("armyReward"); //indicate AI that content of the file is important or it is probably bad
 		vt.value = new fl::OutputVariable("Value");
 		vt.value->setMinimum(0);
-		vt.value->setMaximum(5);
+		vt.value->setMaximum(1);
 
-		std::vector<fl::InputVariable *> helper = {vt.armyLossPersentage, vt.heroStrength, vt.turnDistance, vt.missionImportance, vt.estimatedReward};
+		std::vector<fl::InputVariable *> helper = {vt.armyLossPersentage, vt.heroStrength, vt.turnDistance, vt.missionImportance, vt.goldReward};
 		for(auto val : helper)
 		{
 			vt.engine.addInputVariable(val);
@@ -363,9 +364,9 @@ void FuzzyHelper::initVisitTile()
 		vt.heroStrength->addTerm(new fl::Ramp("HIGH", 0.5, 1));
 		vt.heroStrength->setRange(0.0, 1.0);
 
-		vt.turnDistance->addTerm(new fl::Ramp("SMALL", 0.4, 0.1));
-		vt.turnDistance->addTerm(new fl::Triangle("MEDIUM", 0.2, 0.8));
-		vt.turnDistance->addTerm(new fl::Ramp("LONG", 0.5, 1.5));
+		vt.turnDistance->addTerm(new fl::Ramp("SMALL", 0.6, 0.1));
+		vt.turnDistance->addTerm(new fl::Trapezoid("MEDIUM", 0.1, 0.6, 0.8, 2.5));
+		vt.turnDistance->addTerm(new fl::Ramp("LONG", 0.8, 2.5));
 		vt.turnDistance->setRange(0.0, 3.0);
 
 		vt.missionImportance->addTerm(new fl::Ramp("LOW", 2.5, 0));
@@ -373,16 +374,20 @@ void FuzzyHelper::initVisitTile()
 		vt.missionImportance->addTerm(new fl::Ramp("HIGH", 2.5, 5));
 		vt.missionImportance->setRange(0.0, 5.0);
 
-		vt.estimatedReward->addTerm(new fl::Ramp("LOW", 2.5, 0));
-		vt.estimatedReward->addTerm(new fl::Ramp("HIGH", 2.5, 5));
-		vt.estimatedReward->setRange(0.0, 5.0);
+		vt.goldReward->addTerm(new fl::Ramp("LOW", 500, 0));
+		vt.goldReward->addTerm(new fl::Triangle("MEDIUM", 500, 1000, 3000));
+		vt.goldReward->addTerm(new fl::Ramp("HIGH", 1000, 3000));
+		vt.goldReward->setRange(0.0, 5000.0);
 
-		//an issue: in 99% cases this outputs center of mass (2.5) regardless of actual input :/
-		//should be same as "mission Importance" to keep consistency
-		vt.value->addTerm(new fl::Ramp("LOW", 2.5, 0));
-		vt.value->addTerm(new fl::Triangle("MEDIUM", 2, 3)); //can't be center of mass :/
-		vt.value->addTerm(new fl::Ramp("HIGH", 2.5, 5));
-		vt.value->setRange(0.0, 5.0);
+		vt.armyReward->addTerm(new fl::Ramp("LOW", 0.5, 0.2));
+		vt.armyReward->addTerm(new fl::Triangle("MEDIUM", 0.2, 0.5, 1));
+		vt.armyReward->addTerm(new fl::Ramp("HIGH", 0.5, 1));
+		vt.armyReward->setRange(0.0, 1.0);
+
+		vt.value->addTerm(new fl::Ramp("LOW", 0.4, 0.1));
+		vt.value->addTerm(new fl::Triangle("MEDIUM", 0.4, 0.6));
+		vt.value->addTerm(new fl::Ramp("HIGH", 0.6, 0.9));
+		vt.value->setRange(0.0, 1.0);
 
 		//use unarmed scouts if possible
 		vt.addRule("if armyLoss is LOW then Value is MEDIUM");
@@ -391,18 +396,34 @@ void FuzzyHelper::initVisitTile()
 		//we may want to use secondary hero(es) rather than main hero
 
 		//do not cancel important goals
-		vt.addRule("if lockedMissionImportance is HIGH then Value is very LOW");
-		vt.addRule("if lockedMissionImportance is MEDIUM then Value is somewhat LOW");
-		vt.addRule("if lockedMissionImportance is LOW then Value is HIGH");
+		//vt.addRule("if lockedMissionImportance is HIGH then Value is very LOW");
+		//vt.addRule("if lockedMissionImportance is MEDIUM then Value is somewhat LOW");
+		//vt.addRule("if lockedMissionImportance is LOW then Value is HIGH");
 
 		//pick nearby objects if it's easy, avoid long walks
-		vt.addRule("if turnDistance is SMALL then Value is HIGH");
+		/*vt.addRule("if turnDistance is SMALL then Value is somewhat HIGH");
 		vt.addRule("if turnDistance is MEDIUM then Value is MEDIUM");
-		vt.addRule("if turnDistance is LONG then Value is very LOW");
+		vt.addRule("if turnDistance is LONG then Value is LOW");*/
 
 		//some goals are more rewarding by definition f.e. capturing town is more important than collecting resource - experimental
-		vt.addRule("if estimatedReward is HIGH then Value is very HIGH");
-		vt.addRule("if estimatedReward is LOW then Value is somewhat LOW");
+		vt.addRule("if goldReward is HIGH and turnDistance is not very LONG then Value is very HIGH");
+		vt.addRule("if goldReward is HIGH and turnDistance is very LONG then Value is HIGH");
+		vt.addRule("if goldReward is MEDIUM and turnDistance is MEDIUM then Value is somewhat HIGH");
+		vt.addRule("if goldReward is MEDIUM and turnDistance is SMALL then Value is HIGH");
+		vt.addRule("if goldReward is MEDIUM and turnDistance is LONG then Value is LOW");
+		vt.addRule("if goldReward is LOW and turnDistance is very SMALL then Value is MEDIUM");
+		vt.addRule("if goldReward is LOW and turnDistance is SMALL then Value is somewhat LOW");
+		vt.addRule("if goldReward is LOW and turnDistance is MEDIUM then Value is LOW");
+		vt.addRule("if goldReward is LOW and turnDistance is LONG then Value is very LOW");
+
+		vt.addRule("if armyReward is HIGH and turnDistance is not very LONG then Value is very HIGH");
+		vt.addRule("if armyReward is HIGH and turnDistance is very LONG then Value is HIGH");
+		vt.addRule("if armyReward is MEDIUM and turnDistance is MEDIUM then Value is somewhat HIGH");
+		vt.addRule("if armyReward is MEDIUM and turnDistance is SMALL then Value is HIGH");
+		vt.addRule("if armyReward is MEDIUM and turnDistance is LONG then Value is LOW");
+		vt.addRule("if armyReward is LOW and turnDistance is SMALL then Value is somewhat LOW");
+		vt.addRule("if armyReward is LOW and turnDistance is MEDIUM then Value is LOW");
+		vt.addRule("if armyReward is LOW and turnDistance is LONG then Value is very LOW");
 	}
 	catch(fl::Exception & fe)
 	{
@@ -410,11 +431,76 @@ void FuzzyHelper::initVisitTile()
 	}
 }
 
+int32_t estimateTownIncome(const CGObjectInstance * target, const CGHeroInstance * hero)
+{
+	auto relations = cb->getPlayerRelations(hero->tempOwner, target->tempOwner);
+
+	if(relations != PlayerRelations::ENEMIES)
+		return 0; // if we already own it, no additional reward will be received by just visiting it
+
+	auto town = cb->getTown(target->id);
+	auto isNeutral = target->tempOwner == PlayerColor::NEUTRAL;
+	auto isProbablyDeveloped = !isNeutral && town->hasFort();
+
+	return isProbablyDeveloped ? 1500 : 500;
+}
+
+TResources getCreatureBankResources(const CGObjectInstance * target, const CGHeroInstance * hero)
+{
+	auto objectInfo = VLC->objtypeh->getHandlerFor(target->ID, target->subID)->getObjectInfo(target->appearance);
+	CBankInfo * bankInfo = dynamic_cast<CBankInfo *>(objectInfo.get());
+	auto resources = bankInfo->getPossibleResourcesReward();
+
+	return resources;
+}
+
+uint64_t getCreatureBankArmyReward(const CGObjectInstance * target, const CGHeroInstance * hero)
+{
+	auto objectInfo = VLC->objtypeh->getHandlerFor(target->ID, target->subID)->getObjectInfo(target->appearance);
+	CBankInfo * bankInfo = dynamic_cast<CBankInfo *>(objectInfo.get());
+	auto creatures = bankInfo->getPossibleCreaturesReward();
+	uint64_t result = 0;
+
+	for(auto c : creatures)
+	{
+		result += c.type->AIValue * c.count;
+	}
+
+	return result;
+}
+
+uint64_t getArmyReward(const CGObjectInstance * target, const CGHeroInstance * hero)
+{
+	const int dailyIncomeMultiplier = 5;
+
+	switch(target->ID)
+	{
+	case Obj::TOWN:
+		return target->tempOwner == PlayerColor::NEUTRAL ? 5000 : 1000;
+	case Obj::CREATURE_BANK:
+		return getCreatureBankArmyReward(target, hero);
+	case Obj::CREATURE_GENERATOR1:
+	case Obj::CREATURE_GENERATOR2:
+	case Obj::CREATURE_GENERATOR3:
+	case Obj::CREATURE_GENERATOR4:
+		return 1500;
+	case Obj::CRYPT:
+	case Obj::SHIPWRECK:
+	case Obj::SHIPWRECK_SURVIVOR:
+		return 1500;
+	case Obj::ARTIFACT:
+		return dynamic_cast<const CArtifact *>(target)->getArtClassSerial() == CArtifact::ART_MAJOR ? 3000 : 1500;
+	case Obj::DRAGON_UTOPIA:
+		return 10000;
+	default:
+		return 0;
+	}
+}
+
 /// Gets aproximated reward in gold. Daily income is multiplied by 5
 int32_t getGoldReward(const CGObjectInstance * target, const CGHeroInstance * hero)
 {
 	const int dailyIncomeMultiplier = 5;
-	auto relations = cb->getPlayerRelations(hero->tempOwner, target->tempOwner);
 	auto isGold = target->subID == Res::GOLD; // TODO: other resorces could be sold but need to evaluate market power
 
 	switch(target->ID)
@@ -426,18 +512,26 @@ int32_t getGoldReward(const CGObjectInstance * target, const CGHeroInstance * he
 	case Obj::WATER_WHEEL:
 		return 1000;
 	case Obj::TOWN:
-		if(relations != PlayerRelations::ENEMIES)
-			return 0; // if we already own it, no additional reward will be received by just visiting it
-		
-		auto town = cb->getTown(target->id);
-		auto isNeutral = target->tempOwner == PlayerColor::NEUTRAL;
-		auto isProbablyDeveloped = !isNeutral && town->hasFort();
-
-		return dailyIncomeMultiplier * (isProbablyDeveloped ? 1500 : 500);
+		return dailyIncomeMultiplier * estimateTownIncome(target, hero);
 	case Obj::MINE:
+	case Obj::ABANDONED_MINE:
 		return dailyIncomeMultiplier * (isGold ? 1000 : 75);
+	case Obj::MYSTICAL_GARDEN:
+	case Obj::WINDMILL:
+		return 200;
+	case Obj::CAMPFIRE:
+		return 900;
+	case Obj::CREATURE_BANK:
+		return getCreatureBankResources(target, hero)[Res::GOLD];
+	case Obj::CRYPT:
+	case Obj::DERELICT_SHIP:
+		return 3000;
+	case Obj::DRAGON_UTOPIA:
+		return 10000;
+	case Obj::SEA_CHEST:
+		return 1500;
 	default:
-		break;
+		return 0;
 	}
 }
 
@@ -452,22 +546,22 @@ float FuzzyHelper::evaluate(Tasks::ExecuteChain * task, const CGHeroInstance * h
 {
 	double missionImportance = 0;
 	double armyLossPersentage = task->armyLoss / (double)task->armyTotal;
-	double tilePriority = 0;
+	int32_t goldReward = getGoldReward(target, hero);
+	uint64_t armyReward = getArmyReward(target, hero);
 	double result = 0;
-
-	vt.estimatedReward->setEnabled(false);
 
 	try
 	{
 		vt.armyLossPersentage->setValue(armyLossPersentage);
 		vt.heroStrength->setValue((fl::scalar)hero->getTotalStrength() / ai->primaryHero()->getTotalStrength());
 		vt.turnDistance->setValue(task->turns);
+		vt.goldReward->setValue(goldReward);
+		vt.armyReward->setValue(armyReward / 10000.0);
 		vt.missionImportance->setValue(missionImportance);
-		vt.estimatedReward->setValue(tilePriority);
 
 		vt.engine.process();
 		//engine.process(VISIT_TILE); //TODO: Process only Visit_Tile
-		result = vt.value->getValue() / 5;
+		result = vt.value->getValue();
 	}
 	catch(fl::Exception & fe)
 	{
@@ -475,10 +569,12 @@ float FuzzyHelper::evaluate(Tasks::ExecuteChain * task, const CGHeroInstance * h
 	}
 	assert(result >= 0);
 
-	logAi->trace("Evaluated %s, loaa: %f, turns: %f, result %f",
+	logAi->trace("Evaluated %s, loaa: %f, turns: %f, gold: %d, army gain: %d, result %f",
 		task->toString(),
 		armyLossPersentage,
 		task->turns,
+		goldReward,
+		armyReward,
 		result);
 
 	return result;

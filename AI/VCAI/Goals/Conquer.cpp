@@ -35,7 +35,7 @@ Tasks::TaskList Conquer::getTasks() {
 	// lets process heroes according their army strength in descending order
 	std::sort(heroes.begin(), heroes.end(), isLevelHigher);
 
-	addTasks(tasks, sptr(Build()), 0.8);
+	addTasks(tasks, sptr(Build()), 0.8, 0.9);
 	addTasks(tasks, sptr(RecruitHero()));
 
 	if (tasks.size()) {
@@ -44,6 +44,7 @@ Tasks::TaskList Conquer::getTasks() {
 		return tasks;
 	}
 
+	addTasks(tasks, sptr(Defence()), 0.5, 1);
 	addTasks(tasks, sptr(GatherArmy()), 0.7, 0.8); // no hero - just pickup existing army, no buy
 	addTasks(tasks, sptr(CaptureObjects()), 0, 1);
 
@@ -57,20 +58,18 @@ Tasks::TaskList Conquer::getTasks() {
 
 		logAi->trace("Considering tasks for hero %s", nextHero->name);
 
-		//addTasks(tasks, sptr(Defence().sethero(heroPtr)), 1);
-
 		const CGHeroInstance* strongestHero = heroes.at(0);
 
 		if (cb->getDate(Date::DAY) > 21 && nextHero == strongestHero) {
-			addTasks(heroTasks, sptr(Explore().sethero(HeroPtr(heroPtr))), 0.65);
+			addTasks(heroTasks, sptr(Explore().sethero(HeroPtr(heroPtr))), 0.65, 0.75);
 		}
 		else {
-			addTasks(heroTasks, sptr(Explore().sethero(HeroPtr(heroPtr))), 0.5);
+			addTasks(heroTasks, sptr(Explore().sethero(HeroPtr(heroPtr))));
 		}
 
 		if (heroTasks.empty() && nextHero->movement > 0) {
 			// sometimes there is nothing better than go to the nearest town
-			addTasks(heroTasks, sptr(VisitNearestTown().sethero(heroPtr)), 0);
+			addTasks(heroTasks, sptr(VisitNearestTown().sethero(heroPtr)), 0, 0.1);
 		}
 
 		if (heroTasks.size()) {
