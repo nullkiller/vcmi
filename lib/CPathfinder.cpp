@@ -98,7 +98,13 @@ public:
 		return false;
 	};
 
-	void apply(CGPathNode * node, int turns, int remains, CGBaseNode::ENodeAction destAction, CGPathNode * parent)
+	void apply(
+		CGPathNode * node, 
+		int turns, 
+		int remains, 
+		CGBaseNode::ENodeAction destAction, 
+		CGPathNode * parent, 
+		CGBaseNode::ENodeBlocker blocker)
 	{
 		assert(node != parent->theNodeBefore); //two tiles can't point to each other
 		node->moveRemains = remains;
@@ -107,8 +113,17 @@ public:
 		node->theNodeBefore = parent;
 	}
 
-	CGPathNode * tryBypassObject(CPathsInfo & pathsInfo, CGPathNode * node, const CGObjectInstance * obj)
+	CGPathNode * tryBypassBlocker(
+		CPathsInfo & pathsInfo,
+		CGPathNode * source, 
+		CGPathNode * dest, 
+		CGBaseNode::ENodeBlocker blocker)
 	{
+		if(blocker == CGBaseNode::ENodeBlocker::DESTINATION_GUARDED && dest->action == CGBaseNode::ENodeAction::BATTLE)
+		{
+			return dest;
+		}
+
 		return nullptr; // not supported by regular pathfinder
 	}
 
@@ -296,9 +311,10 @@ void TPathfinder<TPathsInfo, TPathNode, TNodeHelper>::calculatePaths()
 					if(cp->layer != i && !isLayerTransitionPossible())
 						continue;
 
-					if(!isMovementToDestPossible(hero))
+					auto blocker = getDestinationBlocker(hero);
+					if(blocker != CGBaseNode::NONE)
 					{
-						dp = nodeHelper->tryBypassObject(out, dp, ctObj);
+						dp = nodeHelper->tryBypassBlocker(out, cp, dp, blocker);
 
 						if(dp == nullptr)
 							continue;
@@ -327,19 +343,20 @@ void TPathfinder<TPathsInfo, TPathNode, TNodeHelper>::calculatePaths()
 					if(nodeHelper->isBetterWay(dp, cp, remains, turnAtNextTile) &&
 						((cp->turns == turnAtNextTile && remains) || passOneTurnLimitCheck()))
 					{
-						nodeHelper->apply(dp, turnAtNextTile, remains, destAction, cp);
+						nodeHelper->apply(dp, turnAtNextTile, remains, destAction, cp, blocker);
 
-						if(isMovementAfterDestPossible(hero, hlp))
+						blocker = getAfterDestinationBlocker(hero, hlp);
+						if(blocker == CGBaseNode::NONE)
 						{
 							pq.push(dp);
 						}
 						else
 						{
-							TPathNode * bypassNode = nodeHelper->tryBypassObject(out, dp, dtObj);
+							TPathNode * bypassNode = nodeHelper->tryBypassBlocker(out, cp, dp, blocker);
 
 							if(bypassNode != nullptr)
 							{
-								pq.push(dp);
+								pq.push(bypassNode);
 							}
 						}
 					}
@@ -370,7 +387,7 @@ void TPathfinder<TPathsInfo, TPathNode, TNodeHelper>::calculatePaths()
 				{
 					dtObj = gs->map->getTile(neighbour).topVisitableObj();
 
-					nodeHelper->apply(dp, turn, movement, getTeleportDestAction(), cp);
+					nodeHelper->apply(dp, turn, movement, getTeleportDestAction(), cp, CGBaseNode::NONE);
 
 					if(dp->action == CGPathNode::TELEPORT_NORMAL)
 						pq.push(dp);
@@ -552,22 +569,22 @@ bool TPathfinder<TPathsInfo, TPathNode, TNodeHelper>::isLayerTransitionPossible(
 }
 
 template <class TPathsInfo, class TPathNode, class TNodeHelper>
-bool TPathfinder<TPathsInfo, TPathNode, TNodeHelper>::isMovementToDestPossible(const CGHeroInstance * hero) const
+CGBaseNode::ENodeBlocker TPathfinder<TPathsInfo, TPathNode, TNodeHelper>::getDestinationBlocker(const CGHeroInstance * hero) const
 {
 	if(dp->accessible == CGPathNode::BLOCKED)
-		return false;
+		return CGBaseNode::DESTINATION_BLOCKED;
 
 	switch(dp->layer)
 	{
 	case ELayer::LAND:
 		if(!canMoveBetween(cp->coord, dp->coord))
-			return false;
+			return CGBaseNode::DESTINATION_BLOCKED;
 		if(isSourceGuarded(hero))
 		{
 			if(!(options.originalMovementRules && cp->layer == ELayer::AIR) &&
 				!isDestinationGuardian()) // Can step into tile of guard
 			{
-				return false;
+				return CGBaseNode::SOURCE_GUARDED;
 			}
 		}
 
@@ -575,44 +592,44 @@ bool TPathfinder<TPathsInfo, TPathNode, TNodeHelper>::isMovementToDestPossible(c
 
 	case ELayer::SAIL:
 		if(!canMoveBetween(cp->coord, dp->coord))
-			return false;
+			return CGBaseNode::DESTINATION_BLOCKED;
 		if(isSourceGuarded(hero))
 		{
 			// Hero embarked a boat standing on a guarded tile -> we must allow to move away from that tile
 			if(cp->action != CGPathNode::EMBARK && !isDestinationGuardian())
-				return false;
+				return CGBaseNode::SOURCE_GUARDED;
 		}
 
 		if(cp->layer == ELayer::LAND)
 		{
 			if(!isDestVisitableObj())
-				return false;
+				return CGBaseNode::DESTINATION_BLOCKED;
 
 			if(dtObj->ID != Obj::BOAT && dtObj->ID != Obj::HERO)
-				return false;
+				return CGBaseNode::DESTINATION_BLOCKED;
 		}
 		else if(isDestVisitableObj() && dtObj->ID == Obj::BOAT)
 		{
 			/// Hero in boat can't visit empty boats
-			return false;
+			return CGBaseNode::DESTINATION_BLOCKED;
 		}
 
 		break;
 
 	case ELayer::WATER:
 		if(!canMoveBetween(cp->coord, dp->coord) || dp->accessible != CGPathNode::ACCESSIBLE)
-			return false;
+			return CGBaseNode::DESTINATION_BLOCKED;
 		if(isDestinationGuarded())
-			return false;
+			return CGBaseNode::DESTINATION_GUARDED;
 
 		break;
 	}
 
-	return true;
+	return CGBaseNode::NONE;
 }
 
 template <class TPathsInfo, class TPathNode, class TNodeHelper>
-bool TPathfinder<TPathsInfo, TPathNode, TNodeHelper>::isMovementAfterDestPossible(
+CGBaseNode::ENodeBlocker TPathfinder<TPathsInfo, TPathNode, TNodeHelper>::getAfterDestinationBlocker(
 	const CGHeroInstance * hero,
 	std::shared_ptr<CPathfinderHelper> hlp) const
 {
@@ -629,41 +646,46 @@ bool TPathfinder<TPathsInfo, TPathNode, TNodeHelper>::isMovementAfterDestPossibl
 		{
 			/// For now we'll always allow transit over teleporters
 			/// Transit over whirlpools only allowed when hero protected
-			return true;
+			return CGBaseNode::ENodeBlocker::NONE;
 		}
 		else if(dtObj->ID == Obj::GARRISON || dtObj->ID == Obj::GARRISON2 || dtObj->ID == Obj::BORDER_GATE)
 		{
 			/// Transit via unguarded garrisons is always possible
-			return true;
+			return CGBaseNode::ENodeBlocker::NONE;
 		}
 
-		break;
+		return CGBaseNode::ENodeBlocker::DESTINATION_VISIT;
 	}
 
+	case CGPathNode::BLOCKING_VISIT:
+		return gs->getGuardingCreatures(dp->coord).size()
+			? CGBaseNode::ENodeBlocker::DESTINATION_GUARDED
+			: CGBaseNode::ENodeBlocker::DESTINATION_BLOCKVIS;
+
 	case CGPathNode::NORMAL:
-		return true;
+		return CGBaseNode::ENodeBlocker::NONE;
 
 	case CGPathNode::EMBARK:
 		if(options.useEmbarkAndDisembark)
-			return true;
+			return CGBaseNode::ENodeBlocker::NONE;
 
-		break;
+		return CGBaseNode::ENodeBlocker::DESTINATION_BLOCKED;
 
 	case CGPathNode::DISEMBARK:
 		if(options.useEmbarkAndDisembark && !isDestinationGuarded())
-			return true;
+			return CGBaseNode::ENodeBlocker::NONE;
 
-		break;
+		return CGBaseNode::ENodeBlocker::DESTINATION_BLOCKED;
 
 	case CGPathNode::BATTLE:
 		/// Movement after BATTLE action only possible from guarded tile to guardian tile
 		if(isDestinationGuarded())
-			return true;
+			return CGBaseNode::ENodeBlocker::DESTINATION_GUARDED;
 
-		break;
+		return CGBaseNode::ENodeBlocker::DESTINATION_BLOCKED;
 	}
 
-	return false;
+	return CGBaseNode::ENodeBlocker::DESTINATION_BLOCKED;
 }
 
 template <class TPathsInfo, class TPathNode, class TNodeHelper>

@@ -156,7 +156,7 @@ bool shouldVisit(HeroPtr h, const CGObjectInstance * obj);
 ui64 evaluateDanger(const CGObjectInstance * obj);
 ui64 evaluateDanger(crint3 tile, const CGHeroInstance * visitor);
 ui64 analyzeDanger(HeroPtr h, crint3 tile);
-uint64_t evaluateLoss(HeroPtr h, crint3 tile, uint64_t heroStrength);
+uint64_t evaluateLoss(HeroPtr h, crint3 tile, uint64_t heroStrength, bool excludeGuards = false);
 inline bool isSafeToVisit(HeroPtr h, crint3 tile) { return !analyzeDanger(h, tile); }
 
 bool compareMovement(HeroPtr lhs, HeroPtr rhs);

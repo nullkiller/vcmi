@@ -201,7 +201,7 @@ public:
 	void endTurn();
 	void striveToQuest(const QuestInfo & q);
 
-	bool isGoodForVisit(const CGObjectInstance * obj, HeroPtr h, SectorMap & sm);
+	bool isGoodForVisit(const CGObjectInstance * obj, HeroPtr h);
 	//void recruitCreatures(const CGTownInstance * t);
 	void recruitCreatures(const CGDwelling * d, const CArmedInstance * recruiter);
 	ui32 howManyArmyCanGet(const CGHeroInstance * h, const CArmedInstance * source); //can we get any better stacks from other hero?

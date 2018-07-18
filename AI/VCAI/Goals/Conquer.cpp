@@ -61,7 +61,7 @@ Tasks::TaskList Conquer::getTasks() {
 		const CGHeroInstance* strongestHero = heroes.at(0);
 
 		if (cb->getDate(Date::DAY) > 21 && nextHero == strongestHero) {
-			addTasks(heroTasks, sptr(Explore().sethero(HeroPtr(heroPtr))), 0.65, 0.75);
+			addTasks(heroTasks, sptr(Explore().sethero(HeroPtr(heroPtr))), 0.3);
 		}
 		else {
 			addTasks(heroTasks, sptr(Explore().sethero(HeroPtr(heroPtr))));

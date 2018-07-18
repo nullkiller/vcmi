@@ -1288,12 +1288,10 @@ bool VCAI::tryBuildNextStructure(const CGTownInstance * t, std::vector<BuildingI
 	return false; //Nothing to build
 }
 
-bool VCAI::isGoodForVisit(const CGObjectInstance * obj, HeroPtr h, SectorMap & sm)
+bool VCAI::isGoodForVisit(const CGObjectInstance * obj, HeroPtr h)
 {
 	const int3 pos = obj->visitablePos();
-	const int3 targetPos = sm.firstTileToGet(h, pos);
-	if(!targetPos.valid())
-		return false;
+
 	if(obj->wasVisited(playerID))
 		return false;
 	if(cb->getPlayerRelations(ai->playerID, obj->tempOwner) != PlayerRelations::ENEMIES && !isWeeklyRevisitable(obj))
@@ -1303,8 +1301,6 @@ bool VCAI::isGoodForVisit(const CGObjectInstance * obj, HeroPtr h, SectorMap & s
 	if(!shouldVisit(h, obj))
 		return false;
 	if(vstd::contains(alreadyVisited, obj))
-		return false;
-	if(!isAccessibleForHero(targetPos, h))
 		return false;
 
 	const CGObjectInstance * topObj = cb->getVisitableObjs(obj->visitablePos()).back(); //it may be hero visiting this obj
@@ -2449,8 +2445,10 @@ bool shouldVisit(HeroPtr h, const CGObjectInstance * obj)
 	switch(obj->ID)
 	{
 	case Obj::TOWN:
-	case Obj::HERO: //never visit our heroes at random
-		return obj->tempOwner != h->tempOwner; //do not visit our towns at random
+	case Obj::HERO: 
+		//never visit our or allied heroes at random
+		//do not visit our or allied towns at random
+		return cb->getPlayerRelations(h->tempOwner, obj->tempOwner) == PlayerRelations::ENEMIES; 
 	case Obj::BORDER_GATE:
 	{
 		for(auto q : ai->myCb->getMyQuests())

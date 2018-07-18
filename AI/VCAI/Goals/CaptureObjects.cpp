@@ -37,8 +37,8 @@ Tasks::TaskList CaptureObjects::getTasks() {
 
 		for (auto objToVisit : objs) {
 			const int3 pos = objToVisit->visitablePos();
-
 			auto pathInfo = ai->turnData->getChainInfo(pos);
+			Tasks::TaskPtr bestTask;
 
 			logAi->trace("considering object %s %s", objToVisit->getObjectName(), pos.toString());
 
@@ -52,7 +52,7 @@ Tasks::TaskList CaptureObjects::getTasks() {
 				auto totalArmy = node.armyLoss + node.armyValue;
 				
 				if(node.action != CGBaseNode::ENodeAction::BLOCKING_VISIT)
-					armyLoss += evaluateLoss(hero, objToVisit->visitablePos(), node.armyValue);
+					armyLoss += evaluateLoss(hero, objToVisit->visitablePos(), node.armyValue, true);
 
 				if(armyLoss > node.armyValue) // we lost 50% or more
 				{
@@ -74,7 +74,17 @@ Tasks::TaskList CaptureObjects::getTasks() {
 
 				logAi->trace("Hero %s should take %s", hero->getObjectName(), objToVisit->getObjectName());
 
-				addTask(tasks, Tasks::ExecuteChain(chainPath, totalArmy, armyLoss, objToVisit));
+				auto newTask = Tasks::sptr(Tasks::ExecuteChain(chainPath, totalArmy, armyLoss, objToVisit));
+
+				if(!bestTask || bestTask->getPriority() < newTask->getPriority())
+				{
+					bestTask = newTask;
+				}
+			}
+
+			if(bestTask && bestTask->canExecute())
+			{
+				tasks.push_back(bestTask);
 			}
 		}
 	};

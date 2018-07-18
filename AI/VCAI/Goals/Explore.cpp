@@ -30,12 +30,12 @@ Tasks::TaskList Explore::getTasks() {
 		return tasks;
 	}
 
-	addTasks(tasks, sptr(CaptureObjects(this->getExplorationHelperObjects()).sethero(hero)), 0.4, 0.8);
+	addTasks(tasks, sptr(CaptureObjects(this->getExplorationHelperObjects()).sethero(hero)), 0.8);
 
 	int3 t = whereToExplore(hero);
 	if (t.valid())
 	{
-		addTask(tasks, Tasks::VisitTile(t, hero), 0.5);
+		addTask(tasks, Tasks::VisitTile(t, hero), 0.3);
 	}
 	else
 	{

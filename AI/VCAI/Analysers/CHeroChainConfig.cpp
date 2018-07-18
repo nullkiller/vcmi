@@ -12,6 +12,8 @@
 #include "CHeroChainConfig.h"
 #include "../VCAI.h"
 
+extern boost::thread_specific_ptr<CCallback> cb;
+
 std::vector<CHeroNode *> CVCAIHeroChainConfig::getInitialNodes(CHeroChainInfo & pathsInfo)
 {
 	std::vector<CHeroNode *> result;
@@ -36,6 +38,34 @@ std::vector<CHeroNode *> CVCAIHeroChainConfig::getInitialNodes(CHeroChainInfo & 
 	return result;
 }
 
+bool shouldCancelNode(CHeroChainInfo & pathsInfo, CHeroNode * node)
+{
+	auto coord = node->coord;
+	auto layer = node->layer;
+
+	for(int i = 0; i < CVCAIHeroChainConfig::ChainLimit; i++)
+	{
+		CHeroNode * otherNode = &pathsInfo.nodes[coord.x][coord.y][coord.z][layer][i];
+
+		if(otherNode->armyValue >= node->armyValue)
+		{
+			if(otherNode->turns < node->turns
+				|| otherNode->turns == node->turns && otherNode->moveRemains < node->moveRemains)
+			{
+				return true;
+			}
+		}
+
+		if(otherNode->armyValue > node->armyValue
+			&& otherNode->turns == node->turns && otherNode->moveRemains <= node->moveRemains)
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
 std::vector<CHeroNode *> CVCAIHeroChainConfig::getNextNodes(CHeroChainInfo & pathsInfo, CHeroNode * source, int3 targetTile, EPathfindingLayer layer)
 {
 	std::vector<CHeroNode *> result;
@@ -51,18 +81,13 @@ std::vector<CHeroNode *> CVCAIHeroChainConfig::getNextNodes(CHeroChainInfo & pat
 	if(heroNode == nullptr)
 		return result;
 
-	if(heroNode->accessible == CGBaseNode::NOT_SET)
-	{
-		heroNode->reset();
-		return result;
-	}
-
 	assert(heroNode->actorNumber < actors.size());
 	assert(heroNode->actorNumber >= 0);
 	assert(heroNode->coord.x >= 0);
 	assert(heroNode->coord.x < 300);
 
-	result.push_back(heroNode);
+	if(!shouldCancelNode(pathsInfo, heroNode))
+		result.push_back(heroNode);
 
 	return result;
 }
@@ -98,7 +123,7 @@ CHeroNode * CVCAIHeroChainConfig::allocateHeroNode(CHeroChainInfo & paths, int3 
 	{
 		CHeroNode & heroNode = paths.nodes[coord.x][coord.y][coord.z][layer][i];
 
-		if(!heroNode.isInUse())
+		if(!heroNode.isInUse() && heroNode.accessible != CGBaseNode::NOT_SET)
 		{
 			heroNode.mask = mask;
 			heroNode.actorNumber = actorNumber;
@@ -127,41 +152,137 @@ bool CVCAIHeroChainConfig::isBetterWay(CHeroNode * target, CHeroNode * source, i
 	return false;
 };
 
-void CVCAIHeroChainConfig::apply(CHeroNode * node, int turns, int remains, CGBaseNode::ENodeAction destAction, CHeroNode * parent)
+void CVCAIHeroChainConfig::apply(
+	CHeroNode * node,
+	int turns,
+	int remains,
+	CGBaseNode::ENodeAction destAction,
+	CHeroNode * parent,
+	CGBaseNode::ENodeBlocker blocker)
 {
 	node->moveRemains = remains;
 	node->turns = turns;
 	node->action = destAction;
+	node->previousActor = parent->previousActor;
+	node->armyValue = parent->armyValue;
+	node->armyLoss = parent->armyLoss;
 
-	if(node->previousActor != parent)
+	if(blocker == CGBaseNode::ENodeBlocker::SOURCE_GUARDED)
 	{
-		node->previousActor = parent->previousActor;
-		node->armyValue = parent->armyValue;
-		node->armyLoss = parent->armyLoss;
+		auto srcGuardian = cb->guardingCreaturePosition(parent->coord);
+
+		if(srcGuardian == parent->coord)
+		{
+			node->previousActor = parent;
+		}
 	}
+	
+	if(parent->action == CGBaseNode::ENodeAction::BLOCKING_VISIT || parent->action == CGBaseNode::ENodeAction::VISIT)
+	{
+		// we can not directly bypass objects, we need to interact with them first
+		node->previousActor = parent;
+	}
+
+	assert(node->armyValue > 0);
+	assert(node->previousActor != node);
 }
 
-CHeroNode * CVCAIHeroChainConfig::tryBypassObject(CHeroChainInfo & paths, CHeroNode * node, const CGObjectInstance * obj)
+const CGObjectInstance * getGuardian(int3 tile)
 {
-	auto hero = getNodeHero(paths, node);
-
-	if(obj && obj->ID == Obj::MONSTER)
+	auto guardian = cb->guardingCreaturePosition(tile);
+	if(!guardian.valid())
 	{
-		auto monsterNode = allocateHeroNode(paths, obj->visitablePos(), node->layer, node->mask, node->actorNumber);
-		auto battleNode = allocateHeroNode(paths,node->coord, node->layer, node->mask | BATTLE_NODE, node->actorNumber);
-		auto loss = evaluateLoss(hero, monsterNode->coord, monsterNode->armyValue);
+		return nullptr;
+	}
 
-		if(monsterNode != nullptr && monsterNode->action != CGBaseNode::ENodeAction::UNKNOWN
-			&& battleNode != nullptr && battleNode != monsterNode && battleNode->action == CGBaseNode::ENodeAction::UNKNOWN
-			&& monsterNode->armyValue > loss)
+	auto topObj = cb->getTopObj(tile);
+	if(topObj->ID != Obj::MONSTER)
+	{
+		return nullptr;
+	}
+
+	return topObj;
+}
+
+CHeroNode * CVCAIHeroChainConfig::tryBypassBlocker(
+	CHeroChainInfo & paths,
+	CHeroNode * source,
+	CHeroNode * dest,
+	CGBaseNode::ENodeBlocker blocker)
+{
+	auto hero = getNodeHero(paths, source);
+
+	if(blocker == CHeroNode::DESTINATION_BLOCKVIS)
+	{
+		auto obj = cb->getTopObj(dest->coord);
+		
+		if(!obj)
+			return nullptr;
+
+		if(obj->ID == Obj::RESOURCE || obj->ID == Obj::ARTIFACT || obj->ID == Obj::TREASURE_CHEST
+			|| obj->ID == Obj::SEA_CHEST || obj->ID == Obj::CAMPFIRE || obj->ID == Obj::PANDORAS_BOX)
 		{
-			battleNode->armyLoss = monsterNode->armyLoss + loss;
-			battleNode->previousActor = monsterNode;
-			battleNode->armyValue = monsterNode->armyValue - loss;
+			return dest;
+		}
+	}
+
+	if(blocker == CHeroNode::DESTINATION_VISIT)
+	{
+		return dest;
+	}
+
+	if(blocker == CHeroNode::SOURCE_GUARDED && (source->mask & BATTLE_NODE) > 0)
+	{
+		auto srcGuardians = cb->getGuardingCreatures(source->coord);
+		auto destGuardians = cb->getGuardingCreatures(dest->coord);
+
+		for(auto srcGuard : srcGuardians)
+		{
+			if(!vstd::contains(destGuardians, srcGuard))
+				continue;
+
+			auto guardPos = srcGuard->visitablePos();
+			if(guardPos != source->coord && guardPos != dest->coord)
+				return nullptr;
+		}
+
+		return dest;
+	}
+
+	if(blocker == CHeroNode::DESTINATION_GUARDED)
+	{
+		auto srcGuardians = cb->getGuardingCreatures(source->coord);
+		auto destGuardians = cb->getGuardingCreatures(dest->coord);
+
+		if(destGuardians.empty())
+			return nullptr;
+
+		vstd::erase_if(destGuardians, [&](const CGObjectInstance * destGuard) -> bool
+		{
+			return vstd::contains(srcGuardians, destGuard);
+		});
+
+		auto guardsAlreadyBypassed = destGuardians.empty() && srcGuardians.size();
+		if(guardsAlreadyBypassed && (source->mask & BATTLE_NODE) > 0)
+		{
+			return dest;
+		}
+
+		auto battleNode = allocateHeroNode(paths, dest->coord, dest->layer, dest->mask | BATTLE_NODE, dest->actorNumber);
+		auto loss = evaluateLoss(hero, dest->coord, source->armyValue);
+
+		if(battleNode != nullptr && source->armyValue > loss
+			&& battleNode->armyValue < source->armyValue - loss
+			&& isBetterWay(battleNode, source, dest->moveRemains, dest->turns))
+		{
+			apply(battleNode, dest->turns, dest->moveRemains, dest->action, source, blocker);
+
+			battleNode->armyLoss = source->armyLoss + loss;
+			battleNode->armyValue = source->armyValue - loss;
 
 			return battleNode;
 		}
 	}
 
-	return nullptr; // not supported by regular pathfinder
+	return nullptr;
 }

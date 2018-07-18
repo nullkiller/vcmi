@@ -37,19 +37,25 @@ std::vector<CHeroChainPath> TurnData::getChainInfo(int3 pos)
 		}
 
 		auto path = CHeroChainPath();
-		auto pathNode = CHeroChainPathNode();
+		auto current = &node;
 
-		pathNode.hero = chainConfig->getNodeHero(*chainInfo, &node);
-		pathNode.movementPointsLeft = node.moveRemains;
-		pathNode.movementPointsUsed = (int)(node.turns * pathNode.hero->maxMovePoints(true) + pathNode.hero->movement) - (int)node.moveRemains;
-		pathNode.turns = node.turns;
-		pathNode.armyLoss = node.armyLoss;
-		pathNode.armyValue = node.armyValue;
-		pathNode.action = node.action;
-		pathNode.layer = node.layer;
-		pathNode.targetPosition = node.coord;
-		
-		path.nodes.push_back(pathNode);
+		while(current != nullptr)
+		{
+			auto pathNode = CHeroChainPathNode();
+
+			pathNode.hero = chainConfig->getNodeHero(*chainInfo, &node);
+			pathNode.movementPointsLeft = current->moveRemains;
+			pathNode.movementPointsUsed = (int)(current->turns * pathNode.hero->maxMovePoints(true) + pathNode.hero->movement) - (int)current->moveRemains;
+			pathNode.turns = current->turns;
+			pathNode.armyLoss = current->armyLoss;
+			pathNode.armyValue = current->armyValue;
+			pathNode.action = current->action;
+			pathNode.layer = current->layer;
+			pathNode.targetPosition = current->coord;
+
+			path.nodes.push_back(pathNode);
+			current = current->previousActor;
+		}
 		paths.push_back(path);
 	}
 

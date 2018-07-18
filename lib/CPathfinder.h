@@ -51,6 +51,17 @@ struct DLL_LINKAGE CGBaseNode
 		BLOCKED //tile can't be entered nor visited
 	};
 
+	enum ENodeBlocker : ui8
+	{
+		NONE = 0,
+		SOURCE_GUARDED = 1,
+		DESTINATION_GUARDED = 2,
+		SOURCE_BLOCKED = 3,
+		DESTINATION_BLOCKED = 4,
+		DESTINATION_BLOCKVIS = 5,
+		DESTINATION_VISIT = 6
+	};
+
 	int3 coord; //coordinates
 	ELayer layer;
 	EAccessibility accessible;
@@ -215,8 +226,8 @@ private:
 	
 	bool isLayerTransitionPossible(const ELayer dstLayer, const CGHeroInstance * hero) const;
 	bool isLayerTransitionPossible() const;
-	bool isMovementToDestPossible(const CGHeroInstance * hero) const;
-	bool isMovementAfterDestPossible(const CGHeroInstance * hero, std::shared_ptr<CPathfinderHelper> hlp) const;
+	CGBaseNode::ENodeBlocker getDestinationBlocker(const CGHeroInstance * hero) const;
+	CGBaseNode::ENodeBlocker getAfterDestinationBlocker(const CGHeroInstance * hero, std::shared_ptr<CPathfinderHelper> hlp) const;
 	CGPathNode::ENodeAction getDestAction() const;
 	CGPathNode::ENodeAction getTeleportDestAction() const;
 
@@ -330,13 +341,27 @@ public:
 
 	virtual const CGHeroInstance * getNodeHero(const CHeroChainInfo & pathsInfo, const CHeroNode *) const = 0;
 
-	virtual void updateNode(CHeroChainInfo & pathsInfo, const int3 & coord, const EPathfindingLayer layer, const CGBaseNode::EAccessibility accessible) = 0;
+	virtual void updateNode(
+		CHeroChainInfo & pathsInfo, 
+		const int3 & coord, 
+		const EPathfindingLayer layer,
+		const CGBaseNode::EAccessibility accessible) = 0;
 
 	virtual bool isBetterWay(CHeroNode * target, CHeroNode * source, int remains, int turns) = 0;
 
-	virtual void apply(CHeroNode * node, int turns, int remains, CGBaseNode::ENodeAction destAction, CHeroNode * parent) = 0;
+	virtual void apply(
+		CHeroNode * node, 
+		int turns, 
+		int remains, 
+		CGBaseNode::ENodeAction destAction, 
+		CHeroNode * parent,
+		CGBaseNode::ENodeBlocker blocker) = 0;
 
-	virtual CHeroNode * tryBypassObject(CHeroChainInfo & paths, CHeroNode * node, const CGObjectInstance * obj) = 0;
+	virtual CHeroNode * tryBypassBlocker(
+		CHeroChainInfo & paths, 
+		CHeroNode * source, 
+		CHeroNode * dest,
+		CGBaseNode::ENodeBlocker blocker) = 0;
 
 	bool isHeroPatrolLocked() const
 	{

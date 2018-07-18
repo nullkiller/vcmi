@@ -104,7 +104,6 @@ const CGHeroInstance * HeroPtr::get(bool doWeExpectNull) const
 		else
 		{
 			assert(obj);
-			assert(owned);
 		}
 	}
 
@@ -212,7 +211,7 @@ ui64 evaluateDanger(crint3 tile)
 	return std::max(objectDanger, guardDanger);
 }
 
-uint64_t evaluateLoss(HeroPtr visitor, crint3 tile, uint64_t heroPower)
+uint64_t evaluateLoss(HeroPtr visitor, crint3 tile, uint64_t heroPower, bool excludeGuards)
 {
 	const TerrainTile * t = cb->getTile(tile, false);
 	if(!t) //we can know about guard but can't check its tile (the edge of fow)
@@ -240,18 +239,21 @@ uint64_t evaluateLoss(HeroPtr visitor, crint3 tile, uint64_t heroPower)
 
 	if(const CGObjectInstance * dangerousObject = vstd::backOrNull(visitableObjects))
 	{
-		danger = evaluateDanger(dangerousObject); //unguarded objects can also be dangerous or unhandled
-		if(danger)
+		if(!(excludeGuards && dangerousObject->ID == Obj::MONSTER))
 		{
-			//TODO: don't downcast objects AI shouldn't know about!
-			auto armedObj = dynamic_cast<const CArmedInstance *>(dangerousObject);
-			if(armedObj)
+			danger = evaluateDanger(dangerousObject); //unguarded objects can also be dangerous or unhandled
+			if(danger)
 			{
-				float tacticalAdvantage = fh->getTacticalAdvantage(visitor.get(), armedObj);
-				danger *= tacticalAdvantage; //this line tends to go infinite for allied towns (?)
-			}
+				//TODO: don't downcast objects AI shouldn't know about!
+				auto armedObj = dynamic_cast<const CArmedInstance *>(dangerousObject);
+				if(armedObj)
+				{
+					float tacticalAdvantage = fh->getTacticalAdvantage(visitor.get(), armedObj);
+					danger *= tacticalAdvantage; //this line tends to go infinite for allied towns (?)
+				}
 
-			loss += estimateLoss(heroPower, danger);
+				loss += estimateLoss(heroPower, danger);
+			}
 		}
 
 		if(dangerousObject->ID == Obj::SUBTERRANEAN_GATE)
@@ -270,11 +272,14 @@ uint64_t evaluateLoss(HeroPtr visitor, crint3 tile, uint64_t heroPower)
 		}
 	}
 
-	auto guards = cb->getGuardingCreatures(tile);
-	for(auto cre : guards)
+	if(!excludeGuards)
 	{
-		danger = evaluateDanger(cre) * fh->getTacticalAdvantage(visitor.get(), dynamic_cast<const CArmedInstance *>(cre));
-		loss += estimateLoss(heroPower - loss, danger);
+		auto guards = cb->getGuardingCreatures(tile);
+		for(auto cre : guards)
+		{
+			danger = evaluateDanger(cre) * fh->getTacticalAdvantage(visitor.get(), dynamic_cast<const CArmedInstance *>(cre));
+			loss += estimateLoss(heroPower - loss, danger);
+		}
 	}
 
 	return loss;

@@ -330,6 +330,7 @@ FuzzyHelper::EvalVisitTile::~EvalVisitTile()
 	delete turnDistance;
 	delete missionImportance;
 	delete goldReward;
+	delete armyReward;
 }
 
 void FuzzyHelper::initVisitTile()
@@ -345,17 +346,31 @@ void FuzzyHelper::initVisitTile()
 		vt.value = new fl::OutputVariable("Value");
 		vt.value->setMinimum(0);
 		vt.value->setMaximum(1);
+		vt.value->setAggregation(new fl::AlgebraicSum());
+		vt.value->setDefuzzifier(new fl::Centroid(100));
+		vt.value->setDefaultValue(0.500);
 
-		std::vector<fl::InputVariable *> helper = {vt.armyLossPersentage, vt.heroStrength, vt.turnDistance, vt.missionImportance, vt.goldReward};
+		vt.rules.setConjunction(new fl::AlgebraicProduct());
+		vt.rules.setDisjunction(new fl::AlgebraicSum());
+		vt.rules.setImplication(new fl::AlgebraicProduct());
+		vt.rules.setActivation(new fl::General());
+
+		std::vector<fl::InputVariable *> helper = {
+			vt.armyLossPersentage,
+			vt.heroStrength,
+			vt.turnDistance,
+			vt.missionImportance,
+			vt.goldReward,
+			vt.armyReward };
+
 		for(auto val : helper)
 		{
 			vt.engine.addInputVariable(val);
 		}
 		vt.engine.addOutputVariable(vt.value);
 
-		vt.armyLossPersentage->addTerm(new fl::Ramp("LOW", 0.2, 0));
-		vt.armyLossPersentage->addTerm(new fl::Triangle("MEDIUM", 0.1, 0.3));
-		vt.armyLossPersentage->addTerm(new fl::Ramp("HIGH", 0.2, 1));
+		vt.armyLossPersentage->addTerm(new fl::Ramp("LOW", 0.200, 0.000));
+		vt.armyLossPersentage->addTerm(new fl::Ramp("HIGH", 0.200, 0.500));
 		vt.armyLossPersentage->setRange(0, 1);
 
 		//strength compared to our main hero
@@ -364,35 +379,35 @@ void FuzzyHelper::initVisitTile()
 		vt.heroStrength->addTerm(new fl::Ramp("HIGH", 0.5, 1));
 		vt.heroStrength->setRange(0.0, 1.0);
 
-		vt.turnDistance->addTerm(new fl::Ramp("SMALL", 0.6, 0.1));
-		vt.turnDistance->addTerm(new fl::Trapezoid("MEDIUM", 0.1, 0.6, 0.8, 2.5));
-		vt.turnDistance->addTerm(new fl::Ramp("LONG", 0.8, 2.5));
-		vt.turnDistance->setRange(0.0, 3.0);
+		vt.turnDistance->addTerm(new fl::Ramp("SMALL", 1.000, 0.000));
+		vt.turnDistance->addTerm(new fl::Triangle("MEDIUM", 0.000, 1.000, 2.000));
+		vt.turnDistance->addTerm(new fl::Ramp("LONG", 1.000, 3.000));
+		vt.turnDistance->setRange(0, 3);
 
 		vt.missionImportance->addTerm(new fl::Ramp("LOW", 2.5, 0));
 		vt.missionImportance->addTerm(new fl::Triangle("MEDIUM", 2, 3));
 		vt.missionImportance->addTerm(new fl::Ramp("HIGH", 2.5, 5));
 		vt.missionImportance->setRange(0.0, 5.0);
 
-		vt.goldReward->addTerm(new fl::Ramp("LOW", 500, 0));
-		vt.goldReward->addTerm(new fl::Triangle("MEDIUM", 500, 1000, 3000));
-		vt.goldReward->addTerm(new fl::Ramp("HIGH", 1000, 3000));
+		vt.goldReward->addTerm(new fl::Ramp("LOW", 2000.000, 0.000));
+		vt.goldReward->addTerm(new fl::Triangle("MEDIUM", 0.000, 2000.000, 3500.000));
+		vt.goldReward->addTerm(new fl::Ramp("HIGH", 2000.000, 5000.000));
 		vt.goldReward->setRange(0.0, 5000.0);
 
-		vt.armyReward->addTerm(new fl::Ramp("LOW", 0.5, 0.2));
-		vt.armyReward->addTerm(new fl::Triangle("MEDIUM", 0.2, 0.5, 1));
-		vt.armyReward->addTerm(new fl::Ramp("HIGH", 0.5, 1));
+		vt.armyReward->addTerm(new fl::Ramp("LOW", 0.300, 0.000));
+		vt.armyReward->addTerm(new fl::Triangle("MEDIUM", 0.100, 0.400, 0.800));
+		vt.armyReward->addTerm(new fl::Ramp("HIGH", 0.400, 1.000));
 		vt.armyReward->setRange(0.0, 1.0);
 
-		vt.value->addTerm(new fl::Ramp("LOW", 0.4, 0.1));
-		vt.value->addTerm(new fl::Triangle("MEDIUM", 0.4, 0.6));
-		vt.value->addTerm(new fl::Ramp("HIGH", 0.6, 0.9));
+		vt.value->addTerm(new fl::Ramp("LOWEST", 0.150, 0.000));
+		vt.value->addTerm(new fl::Triangle("LOW", 0.100, 0.100, 0.250, 0.500));
+		vt.value->addTerm(new fl::Triangle("BITLOW", 0.200, 0.200, 0.350, 0.250));
+		vt.value->addTerm(new fl::Triangle("MEDIUM", 0.300, 0.500, 0.700, 0.050));
+		vt.value->addTerm(new fl::Triangle("BITHIGH", 0.650, 0.800, 0.800, 0.250));
+		vt.value->addTerm(new fl::Triangle("HIGH", 0.750, 0.900, 0.900, 0.500));
+		vt.value->addTerm(new fl::Ramp("HIGHEST", 0.850, 1.000));
 		vt.value->setRange(0.0, 1.0);
 
-		//use unarmed scouts if possible
-		vt.addRule("if armyLoss is LOW then Value is MEDIUM");
-		vt.addRule("if armyLoss is MEDIUM then Value is LOW");
-		vt.addRule("if armyLoss is HIGH then Value is very LOW");
 		//we may want to use secondary hero(es) rather than main hero
 
 		//do not cancel important goals
@@ -406,24 +421,28 @@ void FuzzyHelper::initVisitTile()
 		vt.addRule("if turnDistance is LONG then Value is LOW");*/
 
 		//some goals are more rewarding by definition f.e. capturing town is more important than collecting resource - experimental
-		vt.addRule("if goldReward is HIGH and turnDistance is not very LONG then Value is very HIGH");
-		vt.addRule("if goldReward is HIGH and turnDistance is very LONG then Value is HIGH");
-		vt.addRule("if goldReward is MEDIUM and turnDistance is MEDIUM then Value is somewhat HIGH");
-		vt.addRule("if goldReward is MEDIUM and turnDistance is SMALL then Value is HIGH");
-		vt.addRule("if goldReward is MEDIUM and turnDistance is LONG then Value is LOW");
-		vt.addRule("if goldReward is LOW and turnDistance is very SMALL then Value is MEDIUM");
-		vt.addRule("if goldReward is LOW and turnDistance is SMALL then Value is somewhat LOW");
-		vt.addRule("if goldReward is LOW and turnDistance is MEDIUM then Value is LOW");
-		vt.addRule("if goldReward is LOW and turnDistance is LONG then Value is very LOW");
-
-		vt.addRule("if armyReward is HIGH and turnDistance is not very LONG then Value is very HIGH");
-		vt.addRule("if armyReward is HIGH and turnDistance is very LONG then Value is HIGH");
-		vt.addRule("if armyReward is MEDIUM and turnDistance is MEDIUM then Value is somewhat HIGH");
-		vt.addRule("if armyReward is MEDIUM and turnDistance is SMALL then Value is HIGH");
-		vt.addRule("if armyReward is MEDIUM and turnDistance is LONG then Value is LOW");
-		vt.addRule("if armyReward is LOW and turnDistance is SMALL then Value is somewhat LOW");
-		vt.addRule("if armyReward is LOW and turnDistance is MEDIUM then Value is LOW");
-		vt.addRule("if armyReward is LOW and turnDistance is LONG then Value is very LOW");
+		vt.addRule("if turnDistance is MEDIUM then Value is MEDIUM");
+		vt.addRule("if turnDistance is SMALL then Value is BITHIGH");
+		vt.addRule("if turnDistance is LONG then Value is BITLOW");
+		vt.addRule("if turnDistance is very LONG then Value is LOW");
+		vt.addRule("if goldReward is LOW then Value is MEDIUM");
+		vt.addRule("if goldReward is MEDIUM and armyLoss is LOW then Value is BITHIGH");
+		vt.addRule("if goldReward is HIGH and armyLoss is LOW then Value is HIGH");
+		vt.addRule("if armyReward is LOW then Value is MEDIUM");
+		vt.addRule("if armyReward is MEDIUM and armyLoss is LOW then Value is BITHIGH");
+		vt.addRule("if armyReward is HIGH and armyLoss is LOW then Value is HIGHEST with 0.5");
+		vt.addRule("if armyReward is HIGH and goldReward is HIGH and armyLoss is LOW then Value is HIGHEST");
+		vt.addRule("if armyReward is HIGH and goldReward is MEDIUM and armyLoss is LOW then Value is HIGHEST with 0.8");
+		vt.addRule("if armyReward is MEDIUM and goldReward is HIGH and armyLoss is LOW then Value is HIGHEST with 0.5");
+		vt.addRule("if armyReward is MEDIUM and goldReward is MEDIUM and armyLoss is LOW then Value is HIGH");
+		vt.addRule("if armyReward is HIGH and turnDistance is SMALL and armyLoss is LOW then Value is HIGHEST");
+		vt.addRule("if goldReward is HIGH and turnDistance is SMALL and armyLoss is LOW then Value is HIGHEST");
+		vt.addRule("if armyReward is MEDIUM and turnDistance is SMALL and armyLoss is LOW then Value is HIGH");
+		vt.addRule("if goldReward is MEDIUM and turnDistance is SMALL and armyLoss is LOW then Value is BITHIGH");
+		vt.addRule("if goldReward is LOW and armyReward is LOW and turnDistance is not SMALL then Value is LOWEST");
+		vt.addRule("if armyLoss is HIGH then Value is LOWEST");
+		vt.addRule("if armyLoss is LOW then Value is MEDIUM");
+		vt.addRule("if armyReward is LOW and turnDistance is LONG then Value is LOWEST");
 	}
 	catch(fl::Exception & fe)
 	{
@@ -469,6 +488,26 @@ uint64_t getCreatureBankArmyReward(const CGObjectInstance * target, const CGHero
 	return result;
 }
 
+uint64_t getDwellingScore(const CGObjectInstance * target)
+{
+	auto dwelling = dynamic_cast<const CGDwelling *>(target);
+	uint64_t score = 0;
+	
+	for(auto & creLevel : dwelling->creatures)
+	{
+		if(creLevel.first && creLevel.second.size())
+		{
+			auto creature = creLevel.second.back().toCreature();
+			if(cb->getResourceAmount().canAfford(creature->cost * creLevel.first))
+			{
+				score += creature->AIValue * creLevel.first;
+			}
+		}
+	}
+
+	return score;
+}
+
 uint64_t getArmyReward(const CGObjectInstance * target, const CGHeroInstance * hero)
 {
 	const int dailyIncomeMultiplier = 5;
@@ -480,16 +519,13 @@ uint64_t getArmyReward(const CGObjectInstance * target, const CGHeroInstance * h
 	case Obj::CREATURE_BANK:
 		return getCreatureBankArmyReward(target, hero);
 	case Obj::CREATURE_GENERATOR1:
-	case Obj::CREATURE_GENERATOR2:
-	case Obj::CREATURE_GENERATOR3:
-	case Obj::CREATURE_GENERATOR4:
-		return 1500;
+		return getDwellingScore(target) * dailyIncomeMultiplier;
 	case Obj::CRYPT:
 	case Obj::SHIPWRECK:
 	case Obj::SHIPWRECK_SURVIVOR:
 		return 1500;
 	case Obj::ARTIFACT:
-		return dynamic_cast<const CArtifact *>(target)->getArtClassSerial() == CArtifact::ART_MAJOR ? 3000 : 1500;
+		return dynamic_cast<const CGArtifact *>(target)->storedArtifact-> artType->getArtClassSerial() == CArtifact::ART_MAJOR ? 3000 : 1500;
 	case Obj::DRAGON_UTOPIA:
 		return 10000;
 	default:
@@ -518,7 +554,7 @@ int32_t getGoldReward(const CGObjectInstance * target, const CGHeroInstance * he
 		return dailyIncomeMultiplier * (isGold ? 1000 : 75);
 	case Obj::MYSTICAL_GARDEN:
 	case Obj::WINDMILL:
-		return 200;
+		return 100;
 	case Obj::CAMPFIRE:
 		return 900;
 	case Obj::CREATURE_BANK:

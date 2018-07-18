@@ -42,9 +42,19 @@ public:
 
 	bool isBetterWay(CHeroNode * target, CHeroNode * source, int remains, int turn);
 
-	void apply(CHeroNode * node, int turns, int remains, CGBaseNode::ENodeAction destAction, CHeroNode * parent);
+	void apply(
+		CHeroNode * node,
+		int turns,
+		int remains,
+		CGBaseNode::ENodeAction destAction,
+		CHeroNode * parent,
+		CGBaseNode::ENodeBlocker blocker);
 
-	CHeroNode * tryBypassObject(CHeroChainInfo & paths, CHeroNode * node, const CGObjectInstance * obj);
+	CHeroNode * tryBypassBlocker(
+		CHeroChainInfo & paths,
+		CHeroNode * source,
+		CHeroNode * dest,
+		CGBaseNode::ENodeBlocker blocker);
 
 	void addHero(const CGHeroInstance * hero);
 	

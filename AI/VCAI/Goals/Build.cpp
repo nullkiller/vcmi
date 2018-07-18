@@ -356,7 +356,7 @@ Tasks::TaskList Build::getTasks()
 				for (auto obj : interestingObjects) {
 					logAi->trace("Consider capturing object required by build %s/%d", obj->getObjectName(), priority);
 				}
-				addTasks(resourceCapture, sptr(CaptureObjects(interestingObjects)), priority);
+				//addTasks(resourceCapture, sptr(CaptureObjects(interestingObjects)), priority);
 			}
 		}
 
