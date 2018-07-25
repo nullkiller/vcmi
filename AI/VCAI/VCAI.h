@@ -128,10 +128,6 @@ public:
 	void tryRealize(Goals::Invalid & g);
 	void tryRealize(Goals::AbstractGoal & g);
 
-	int3 explorationBestNeighbour(int3 hpos, int radius, HeroPtr h);
-	int3 explorationNewPoint(HeroPtr h);
-	int3 explorationDesperate(HeroPtr h);
-
 	virtual std::string getBattleAIName() const override;
 
 	virtual void init(std::shared_ptr<CCallback> CB) override;
@@ -229,11 +225,9 @@ public:
 	std::vector<const CGObjectInstance *> getFlaggedObjects() const;
 
 	const CGObjectInstance * lookForArt(int aid) const;
-	bool isAccessible(const int3 & pos);
 	HeroPtr getHeroWithGrail() const;
 
 	const CGObjectInstance * getUnvisitedObj(const std::function<bool(const CGObjectInstance *)> & predicate);
-	bool isAccessibleForHero(const int3 & pos, HeroPtr h, bool includeAllies = false) const;
 	//optimization - use one SM for every hero call
 	std::shared_ptr<SectorMap> getCachedSectorMap(HeroPtr h);
 

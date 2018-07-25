@@ -47,7 +47,6 @@ Tasks::TaskList CaptureObjects::getTasks() {
 				const CHeroChainPathNode & node = chainPath.nodes.front();
 				HeroPtr hero = node.hero;
 
-				auto sm = ai->getCachedSectorMap(hero);
 				auto armyLoss = node.armyLoss;
 				auto totalArmy = node.armyLoss + node.armyValue;
 				
@@ -68,7 +67,7 @@ Tasks::TaskList CaptureObjects::getTasks() {
 
 				logAi->trace("Hero %s can rich %s", hero->getObjectName(), objToVisit->getObjectName());
 
-				if (!this->shouldVisitObject(objToVisit, hero, *sm)) {
+				if (!this->shouldVisitObject(objToVisit, hero)) {
 					continue;
 				}
 
@@ -99,7 +98,7 @@ Tasks::TaskList CaptureObjects::getTasks() {
 	return tasks;
 }
 
-bool CaptureObjects::shouldVisitObject(ObjectIdRef obj, HeroPtr hero, SectorMap& sm) {
+bool CaptureObjects::shouldVisitObject(ObjectIdRef obj, HeroPtr hero) {
 	const CGObjectInstance* objInstance = obj;
 
 	if (!objInstance || objectTypes.size() && !vstd::contains(objectTypes, objInstance->ID.num)) {
@@ -111,10 +110,8 @@ bool CaptureObjects::shouldVisitObject(ObjectIdRef obj, HeroPtr hero, SectorMap&
 	}
 
 	const int3 pos = objInstance->visitablePos();
-	const int3 targetPos = sm.firstTileToGet(hero, pos);
 
-	if (!targetPos.valid()
-		|| vstd::contains(ai->alreadyVisited, objInstance)) {
+	if (vstd::contains(ai->alreadyVisited, objInstance)) {
 		return false;
 	}
 
@@ -128,11 +125,6 @@ bool CaptureObjects::shouldVisitObject(ObjectIdRef obj, HeroPtr hero, SectorMap&
 	}
 
 	if (!shouldVisit(hero, objInstance)) {
-		return false;
-	}
-
-	if (!ai->isAccessibleForHero(targetPos, hero))
-	{
 		return false;
 	}
 

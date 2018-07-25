@@ -69,7 +69,7 @@ public:
 	}
 
 protected:
-	virtual bool shouldVisitObject(ObjectIdRef obj, HeroPtr hero, SectorMap& sm);
+	virtual bool shouldVisitObject(ObjectIdRef obj, HeroPtr hero);
 };
 }
 

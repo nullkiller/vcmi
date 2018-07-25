@@ -159,7 +159,7 @@ Tasks::TaskList GatherArmy::getTasks() {
 
 	for (HeroPtr hero : heroes) {
 		auto isStronger = isLevelHigher(hero, this->hero);
-		auto isAccessible = ai->isAccessibleForHero(targetHeroPosition, hero, true);
+		auto isAccessible = isAccessibleForHero(targetHeroPosition, hero, true);
 
 		if (hero.h == this->hero.h
 			|| isStronger

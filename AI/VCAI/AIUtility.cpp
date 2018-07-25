@@ -382,22 +382,6 @@ bool canBeEmbarkmentPoint(const TerrainTile * t, bool fromWater)
 	return false;
 }
 
-int3 whereToExplore(HeroPtr h)
-{
-	TimeCheck tc("where to explore");
-	int radius = h->getSightRadius();
-	int3 hpos = h->visitablePos();
-
-	try //check if nearby tiles allow us to reveal anything - this is quick
-	{
-		return ai->explorationBestNeighbour(hpos, radius, h);
-	}
-	catch(cannotFulfillGoalException & e)
-	{
-		//perform exhaustive search
-		return ai->explorationNewPoint(h);
-	}
-}
 
 bool isBlockedBorderGate(int3 tileToHit) //TODO: is that function needed? should be handled by pathfinder
 {
@@ -518,4 +502,34 @@ const CGHeroInstance* getNearestHero(std::vector<const CGHeroInstance*> heroes, 
 	}
 
 	return carrier;
+}
+
+bool isAccessibleForHero(const int3 & pos, HeroPtr h, bool includeAllies)
+{
+	// Don't visit tile occupied by allied hero
+	if(!includeAllies)
+	{
+		for(auto obj : cb->getVisitableObjs(pos))
+		{
+			if(obj->ID == Obj::HERO && cb->getPlayerRelations(ai->playerID, obj->tempOwner) != PlayerRelations::ENEMIES)
+			{
+				if(obj != h.get())
+					return false;
+			}
+		}
+	}
+	return cb->getPathsInfo(h.get())->getPathInfo(pos)->reachable();
+}
+
+bool isAccessible(const int3 & pos)
+{
+	//TODO precalculate for speed
+
+	for(const CGHeroInstance * h : cb->getHeroesInfo())
+	{
+		if(isAccessibleForHero(pos, h))
+			return true;
+	}
+
+	return false;
 }

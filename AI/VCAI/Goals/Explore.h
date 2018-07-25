@@ -41,6 +41,10 @@ namespace Goals
 		Tasks::TaskList getTasks() override;
 	private:
 		std::vector<const CGObjectInstance *> getExplorationHelperObjects();
+		int3 explorationBestNeighbour(int3 hpos, int radius, HeroPtr h);
+		int3 explorationNewPoint(HeroPtr h);
+		int3 explorationDesperate(HeroPtr h);
+		int3 whereToExplore(HeroPtr h);
 	};
 }
 

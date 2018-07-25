@@ -59,7 +59,7 @@ Tasks::TaskList Defence::getTasks() {
 	auto ourStrongestHero = myHeroes.at(0);
 	auto enemyStrongestHero = enemyHeroes.at(0);
 
-	if (!ai->isAccessibleForHero(enemyStrongestHero->visitablePos(), ourStrongestHero)) {
+	if (!isAccessibleForHero(enemyStrongestHero->visitablePos(), ourStrongestHero)) {
 		return tasks;
 	}
 

@@ -205,7 +205,7 @@ TSubgoal FindObj::whatToDoToAchieve()
 			}
 		}
 	}
-	if(o && ai->isAccessible(o->pos)) //we don't use isAccessibleForHero as we don't know which hero it is
+	if(o && isAccessible(o->pos)) //we don't use isAccessibleForHero as we don't know which hero it is
 		return sptr(Goals::GetObj(o->id.getNum()));
 	else
 		return sptr(Goals::Explore());
@@ -227,14 +227,14 @@ TSubgoal GetObj::whatToDoToAchieve()
 	int3 pos = obj->visitablePos();
 	if(hero)
 	{
-		if(ai->isAccessibleForHero(pos, hero))
+		if(isAccessibleForHero(pos, hero))
 			return sptr(Goals::VisitTile(pos).sethero(hero));
 	}
 	else
 	{
 		for(auto h : cb->getHeroesInfo())
 		{
-			if(ai->isAccessibleForHero(pos, h))
+			if(isAccessibleForHero(pos, h))
 				return sptr(Goals::VisitTile(pos).sethero(h)); //we must visit object with same hero, if any
 		}
 	}
@@ -265,7 +265,7 @@ TSubgoal VisitHero::whatToDoToAchieve()
 		return sptr(Goals::Explore());
 	int3 pos = obj->visitablePos();
 
-	if(hero && ai->isAccessibleForHero(pos, hero, true) && analyzeDanger(hero, pos)) //enemy heroes can get reinforcements
+	if(hero && isAccessibleForHero(pos, hero, true) && analyzeDanger(hero, pos)) //enemy heroes can get reinforcements
 	{
 		if(hero->pos == pos)
 			logAi->error("Hero %s tries to visit himself.", hero.name);
@@ -479,7 +479,7 @@ TSubgoal GetResources::whatToDoToAchieve()
 	{
 		if(!(market->o->ID == Obj::TOWN && market->o->tempOwner == ai->playerID))
 		{
-			if(!ai->isAccessible(market->o->visitablePos()))
+			if(!isAccessible(market->o->visitablePos()))
 				return true;
 		}
 		return false;

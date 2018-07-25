@@ -167,7 +167,9 @@ bool compareArtifacts(const CArtifactInstance * a1, const CArtifactInstance * a2
 ui32 distanceToTile(const CGHeroInstance* hero, int3 pos);
 ui32 distanceToTile(const CPathsInfo* pathsInfo, int3 pos);
 const CGHeroInstance* getNearestHero(std::vector<const CGHeroInstance*> heroes, int3 pos);
-int3 whereToExplore(HeroPtr h);
+
+bool isAccessible(const int3 & pos);
+bool isAccessibleForHero(const int3 & pos, HeroPtr h, bool includeAllies = false);
 
 class CDistanceSorter
 {
