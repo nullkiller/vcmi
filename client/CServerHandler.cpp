@@ -478,7 +478,7 @@ void CServerHandler::startGameplay()
 	state = EClientState::GAMEPLAY;
 }
 
-void CServerHandler::endGameplay(bool closeConnection)
+void CServerHandler::endGameplay(bool closeConnection, bool restart)
 {
 	client->endGame();
 	vstd::clear_pointer(client);
@@ -490,14 +490,17 @@ void CServerHandler::endGameplay(bool closeConnection)
 		CSH->sendClientDisconnecting();
 		logNetwork->info("Closed connection.");
 	}
-	if(CMM)
+	if(!restart)
 	{
-		GH.curInt = CMM;
-		CMM->enable();
-	}
-	else
-	{
-		GH.curInt = CMainMenu::create();
+		if(CMM)
+		{
+			GH.curInt = CMM.get();
+			CMM->enable();
+		}
+		else
+		{
+			GH.curInt = CMainMenu::create().get();
+		}
 	}
 }
 
@@ -563,7 +566,7 @@ void CServerHandler::debugStartTest(std::string filename, bool save)
 	else
 		startLocalServerAndConnect();
 
-	while(!settings["session"]["headless"].Bool() && !dynamic_cast<CLobbyScreen *>(GH.topInt()))
+	while(!settings["session"]["headless"].Bool() && !dynamic_cast<CLobbyScreen *>(GH.topInt().get()))
 		boost::this_thread::sleep(boost::posix_time::milliseconds(50));
 	while(!mi || mapInfo->fileURI != CSH->mi->fileURI)
 	{

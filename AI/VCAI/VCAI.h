@@ -78,12 +78,12 @@ public:
 
 	//try build an unbuilt structure in maxDays at most (0 = indefinite)
 	/*bool canBuildStructure(const CGTownInstance * t, BuildingID building, unsigned int maxDays=7);*/
-	bool tryBuildStructure(const CGTownInstance * t, BuildingID building, unsigned int maxDays = 7);
+	bool tryBuildStructure(const CGTownInstance * t, BuildingID building, unsigned int maxDays = 7) const;
 	//try build ANY unbuilt structure
-	BuildingID canBuildAnyStructure(const CGTownInstance * t, std::vector<BuildingID> buildList, unsigned int maxDays = 7);
-	bool tryBuildAnyStructure(const CGTownInstance * t, std::vector<BuildingID> buildList, unsigned int maxDays = 7);
+	BuildingID canBuildAnyStructure(const CGTownInstance * t, std::vector<BuildingID> buildList, unsigned int maxDays = 7) const;
+	bool tryBuildAnyStructure(const CGTownInstance * t, std::vector<BuildingID> buildList, unsigned int maxDays = 7) const;
 	//try build first unbuilt structure
-	bool tryBuildNextStructure(const CGTownInstance * t, std::vector<BuildingID> buildList, unsigned int maxDays = 7);
+	bool tryBuildNextStructure(const CGTownInstance * t, std::vector<BuildingID> buildList, unsigned int maxDays = 7) const;
 
 	friend class FuzzyHelper;
 

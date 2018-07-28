@@ -741,7 +741,8 @@ void VCAI::makeTurn()
 
 	makeTurnInternal();
 }
-
+/*This method defines core of AI behavior. It is not consistent system, just "a bit of everything for everyone" done in some example order.
+ It is not supposed to work this way in final version of VCAI. It consists of few actions/loops done in particular order, hard parts are explained below with focus on explaining hero management logic*/
 void VCAI::makeTurnInternal()
 {
 	saving = 0;
@@ -1092,7 +1093,7 @@ void VCAI::recruitCreatures(const CGDwelling * d, const CArmedInstance * recruit
 	}
 }
 
-bool VCAI::tryBuildStructure(const CGTownInstance * t, BuildingID building, unsigned int maxDays)
+bool VCAI::tryBuildStructure(const CGTownInstance * t, BuildingID building, unsigned int maxDays) const
 {
 	if(maxDays == 0)
 	{
@@ -1149,15 +1150,7 @@ bool VCAI::tryBuildStructure(const CGTownInstance * t, BuildingID building, unsi
 		}
 		else if(canBuild == EBuildingState::NO_RESOURCES)
 		{
-			//TResources income = estimateIncome();
-			TResources cost = t->town->buildings.at(buildID)->resources;
-			for(int i = 0; i < GameConstants::RESOURCE_QUANTITY; i++)
-			{
-				//int diff = currentRes[i] - cost[i] + income[i];
-				int diff = currentRes[i] - cost[i];
-				if(diff < 0)
-					saving[i] = 1;
-			}
+			//We can't do anything about it - no requests from this function
 			continue;
 		}
 		else if(canBuild == EBuildingState::PREREQUIRES)
@@ -1175,85 +1168,7 @@ bool VCAI::tryBuildStructure(const CGTownInstance * t, BuildingID building, unsi
 	return false;
 }
 
-//bool VCAI::canBuildStructure(const CGTownInstance * t, BuildingID building, unsigned int maxDays=7)
-//{
-//		if (maxDays == 0)
-//	{
-//		logAi->warn("Request to build building %d in 0 days!", building.toEnum());
-//		return false;
-//	}
-//
-//	if (!vstd::contains(t->town->buildings, building))
-//		return false; // no such building in town
-//
-//	if (t->hasBuilt(building)) //Already built? Shouldn't happen in general
-//		return true;
-//
-//	const CBuilding * buildPtr = t->town->buildings.at(building);
-//
-//	auto toBuild = buildPtr->requirements.getFulfillmentCandidates([&](const BuildingID & buildID)
-//	{
-//		return t->hasBuilt(buildID);
-//	});
-//	toBuild.push_back(building);
-//
-//	for(BuildingID buildID : toBuild)
-//	{
-//		EBuildingState::EBuildingState canBuild = cb->canBuildStructure(t, buildID);
-//		if (canBuild == EBuildingState::HAVE_CAPITAL
-//		 || canBuild == EBuildingState::FORBIDDEN
-//		 || canBuild == EBuildingState::NO_WATER)
-//			return false; //we won't be able to build this
-//	}
-//
-//	if (maxDays && toBuild.size() > maxDays)
-//		return false;
-//
-//	TResources currentRes = cb->getResourceAmount();
-//	TResources income = estimateIncome();
-//	//TODO: calculate if we have enough resources to build it in maxDays
-//
-//	for(const auto & buildID : toBuild)
-//	{
-//		const CBuilding *b = t->town->buildings.at(buildID);
-//
-//		EBuildingState::EBuildingState canBuild = cb->canBuildStructure(t, buildID);
-//		if(canBuild == EBuildingState::ALLOWED)
-//		{
-//			if(!containsSavedRes(b->resources))
-//			{
-//				logAi->debug("Player %d will build %s in town of %s at %s", playerID, b->Name(), t->name, t->pos.toString());
-//				return true;
-//			}
-//			continue;
-//		}
-//		else if(canBuild == EBuildingState::NO_RESOURCES)
-//		{
-//			TResources cost = t->town->buildings.at(buildID)->resources;
-//			for (int i = 0; i < GameConstants::RESOURCE_QUANTITY; i++)
-//			{
-//				int diff = currentRes[i] - cost[i] + income[i];
-//				if(diff < 0)
-//					saving[i] = 1;
-//			}
-//			continue;
-//		}
-//		else if (canBuild == EBuildingState::PREREQUIRES)
-//		{
-//			// can happen when dependencies have their own missing dependencies
-//			if (canBuildStructure(t, buildID, maxDays - 1))
-//				return true;
-//		}
-//		else if (canBuild == EBuildingState::MISSING_BASE)
-//		{
-//			if (canBuildStructure(t, b->upgrade, maxDays - 1))
-//				 return true;
-//		}
-//	}
-//	return false;
-//}
-
-bool VCAI::tryBuildAnyStructure(const CGTownInstance * t, std::vector<BuildingID> buildList, unsigned int maxDays)
+bool VCAI::tryBuildAnyStructure(const CGTownInstance * t, std::vector<BuildingID> buildList, unsigned int maxDays) const
 {
 	for(const auto & building : buildList)
 	{
@@ -1265,7 +1180,7 @@ bool VCAI::tryBuildAnyStructure(const CGTownInstance * t, std::vector<BuildingID
 	return false; //Can't build anything
 }
 
-BuildingID VCAI::canBuildAnyStructure(const CGTownInstance * t, std::vector<BuildingID> buildList, unsigned int maxDays)
+BuildingID VCAI::canBuildAnyStructure(const CGTownInstance * t, std::vector<BuildingID> buildList, unsigned int maxDays) const
 {
 	for(const auto & building : buildList)
 	{
@@ -1277,7 +1192,7 @@ BuildingID VCAI::canBuildAnyStructure(const CGTownInstance * t, std::vector<Buil
 	return BuildingID::NONE; //Can't build anything
 }
 
-bool VCAI::tryBuildNextStructure(const CGTownInstance * t, std::vector<BuildingID> buildList, unsigned int maxDays)
+bool VCAI::tryBuildNextStructure(const CGTownInstance * t, std::vector<BuildingID> buildList, unsigned int maxDays) const
 {
 	for(const auto & building : buildList)
 	{
@@ -1770,12 +1685,10 @@ void VCAI::tryRealize(Goals::AbstractGoal & g)
 HeroPtr VCAI::primaryHero() const
 {
 	auto hs = cb->getHeroesInfo();
-	boost::sort(hs, compareHeroStrength);
-
-	if(hs.empty())
+	if (hs.empty())
 		return nullptr;
-
-	return hs.back();
+	else
+		return *boost::max_element(hs, compareHeroStrength);
 }
 
 void VCAI::endTurn()
