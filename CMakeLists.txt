@@ -143,7 +143,8 @@ if(WIN32)
 		# Suppress warnings
 		add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 		add_definitions(-D_SCL_SECURE_NO_WARNINGS)
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /bigobj /wd4251")
+		# 4250: 'class1' : inherits 'class2::member' via dominance
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /bigobj  /wd4250")
 
 		if(ENABLE_MULTI_PROCESS_BUILDS)
 			set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
@@ -160,7 +161,7 @@ if(WIN32)
 	endif(MSVC)
 
 	if(MINGW)
-		set(SYSTEM_LIBS ${SYSTEM_LIBS} ole32 oleaut32 ws2_32 mswsock dbghelp)
+		set(SYSTEM_LIBS ${SYSTEM_LIBS} ole32 oleaut32 ws2_32 mswsock dbghelp bcrypt)
 
 		# Check for iconv (may be needed for Boost.Locale)
 		include(CheckLibraryExists)

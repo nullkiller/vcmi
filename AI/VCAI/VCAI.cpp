@@ -744,10 +744,11 @@ void VCAI::makeTurn()
 		}
 	}
 
+	cb->sendMessage("vcmieagles");
+
 	if(cb->getDate(Date::DAY) == 1)
 	{
 		retrieveVisitableObjs();
-		cb->sendMessage("vcmieagles");
 	}
 
 	try
@@ -763,6 +764,7 @@ void VCAI::makeTurn()
 	}
 	catch (boost::thread_interrupted & e)
 	{
+	(void)e;
 		logAi->debug("Making turn thread has been interrupted. We'll end without calling endTurn.");
 		return;
 	}
@@ -1194,7 +1196,7 @@ bool VCAI::moveHeroToTile(int3 dst, HeroPtr h)
 			logAi->error("Hero %s cannot reach %s.", h->name, dst.toString());
 			return true;
 		}
-		int i = path.nodes.size() - 1;
+		int i = (int)path.nodes.size() - 1;
 
 		auto getObj = [&](int3 coord, bool ignoreHero)
 		{
@@ -1390,12 +1392,12 @@ void VCAI::tryRealize(Goals::Trade & g) //trade
 
 				int toGive, toGet;
 				m->getOffer(res, g.resID, toGive, toGet, EMarketMode::RESOURCE_RESOURCE);
-				toGive = toGive * (it->resVal / toGive); //round down
+				toGive = static_cast<int>(toGive * (it->resVal / toGive)); //round down
 				//TODO trade only as much as needed
 				if (toGive) //don't try to sell 0 resources
 				{
 					cb->trade(obj, EMarketMode::RESOURCE_RESOURCE, res, g.resID, toGive);
-					accquiredResources = toGet * (it->resVal / toGive);
+					accquiredResources = static_cast<int>(toGet * (it->resVal / toGive));
 					logAi->debug("Traded %d of %s for %d of %s at %s", toGive, res, accquiredResources, g.resID, obj->getObjectName());
 				}
 				if (cb->getResourceAmount((Res::ERes)g.resID) >= g.value)
@@ -1616,7 +1618,7 @@ void AIStatus::removeQuery(QueryID ID)
 int AIStatus::getQueriesCount()
 {
 	boost::unique_lock<boost::mutex> lock(mx);
-	return remainingQueries.size();
+	return static_cast<int>(remainingQueries.size());
 }
 
 void AIStatus::startedTurn()

@@ -34,6 +34,7 @@ CSkill::LevelInfo::~LevelInfo()
 CSkill::CSkill(SecondarySkill id, std::string identifier)
 	: id(id), identifier(identifier)
 {
+	gainChance[0] = gainChance[1] = 0; //affects CHeroClassHandler::afterLoadFinalization()
 	levels.resize(NSecondarySkill::levels.size() - 1);
 }
 
@@ -148,18 +149,18 @@ const std::string & CSkillHandler::skillName(int skill) const
 
 CSkill * CSkillHandler::loadFromJson(const JsonNode & json, const std::string & identifier, size_t index)
 {
-	CSkill * skill = new CSkill(SecondarySkill(index), identifier);
+	CSkill * skill = new CSkill(SecondarySkill((si32)index), identifier);
 
 	skill->name = json["name"].String();
 	switch(json["gainChance"].getType())
 	{
 	case JsonNode::JsonType::DATA_INTEGER:
-		skill->gainChance[0] = json["gainChance"].Integer();
-		skill->gainChance[1] = json["gainChance"].Integer();
+		skill->gainChance[0] = static_cast<si32>(json["gainChance"].Integer());
+		skill->gainChance[1] = static_cast<si32>(json["gainChance"].Integer());
 		break;
 	case JsonNode::JsonType::DATA_STRUCT:
-		skill->gainChance[0] = json["gainChance"]["might"].Integer();
-		skill->gainChance[1] = json["gainChance"]["magic"].Integer();
+		skill->gainChance[0] = static_cast<si32>(json["gainChance"]["might"].Integer());
+		skill->gainChance[1] = static_cast<si32>(json["gainChance"]["magic"].Integer());
 		break;
 	default:
 		break;

@@ -46,6 +46,7 @@ public:
 
 	BuildingID bid; //structure ID
 	BuildingID upgrade; /// indicates that building "upgrade" can be improved by this, -1 = empty
+	BuildingSubID::EBuildingSubID subId; /// subtype for special buildings, -1 = the building is not special
 
 	enum EBuildMode
 	{
@@ -55,7 +56,19 @@ public:
 		BUILD_GRAIL    // 3 - grail - building reqires grail to be built
 	} mode;
 
-	CBuilding();
+	enum ETowerHeight // for lookup towers and some grails
+	{
+		HEIGHT_NO_TOWER = 5, // building has not 'lookout tower' ability
+		HEIGHT_LOW = 10,     // low lookout tower, but castle without lookout tower gives radius 5
+		HEIGHT_AVERAGE = 15,
+		HEIGHT_HIGH = 20,    // such tower is in the Tower town
+		HEIGHT_SKYSHIP = std::numeric_limits<int>::max()  // grail, open entire map
+	} height;
+
+	static const std::map<std::string, CBuilding::EBuildMode> MODES;
+	static const std::map<std::string, CBuilding::ETowerHeight> TOWER_TYPES;
+
+	CBuilding() : town(nullptr), mode(BUILD_NORMAL) {};
 
 	const std::string &Name() const;
 	const std::string &Description() const;
@@ -65,6 +78,31 @@ public:
 
 	// returns how many times build has to be upgraded to become build
 	si32 getDistance(BuildingID build) const;
+
+	STRONG_INLINE
+	bool IsTradeBuilding() const
+	{
+		return bid == BuildingID::MARKETPLACE || subId == BuildingSubID::ARTIFACT_MERCHANT || subId == BuildingSubID::FREELANCERS_GUILD;
+	}
+
+	STRONG_INLINE
+	bool IsWeekBonus() const
+	{
+		return subId == BuildingSubID::STABLES || subId == BuildingSubID::MANA_VORTEX;
+	}
+
+	STRONG_INLINE
+	bool IsVisitingBonus() const
+	{
+		return subId == BuildingSubID::ATTACK_VISITING_BONUS ||
+			subId == BuildingSubID::DEFENSE_VISITING_BONUS || 
+			subId == BuildingSubID::SPELL_POWER_VISITING_BONUS ||
+			subId == BuildingSubID::KNOWLEDGE_VISITING_BONUS ||
+			subId == BuildingSubID::EXPERIENCE_VISITING_BONUS;
+	}
+
+	/// input: faction, bid; output: subId, height;
+	void update792(const BuildingID & bid, BuildingSubID::EBuildingSubID & subId, ETowerHeight & height);
 
 	template <typename Handler> void serialize(Handler &h, const int version)
 	{
@@ -78,6 +116,16 @@ public:
 		h & requirements;
 		h & upgrade;
 		h & mode;
+
+		if(version >= 792)
+		{
+			h & subId;
+			h & height;
+		}
+		if(!h.saving && version < 793)
+		{
+			update792(bid, subId, height);
+		}
 		if(!h.saving)
 			deserializeFix();
 	}
@@ -179,6 +227,10 @@ public:
 	std::string getFactionName() const;
 	std::string getBuildingScope() const;
 	std::set<si32> getAllBuildings() const;
+	const CBuilding * getSpecialBuilding(BuildingSubID::EBuildingSubID subID) const;
+	const std::string getGreeting(BuildingSubID::EBuildingSubID subID) const;
+	void setGreeting(BuildingSubID::EBuildingSubID subID, const std::string message) const; //may affect only mutable field
+	BuildingID::EBuildingID getBuildingType(BuildingSubID::EBuildingSubID subID) const;
 
 	CFaction * faction;
 
@@ -285,6 +337,10 @@ public:
 		}
 		h & defaultTavernChance;
 	}
+	
+private:
+	///generated bonusing buildings messages for all towns of this type.
+	mutable std::map<BuildingSubID::EBuildingSubID, const std::string> specialMessages; //may be changed by CGTownBuilding::getVisitingBonusGreeting() const
 };
 
 class DLL_LINKAGE CTownHandler : public IHandlerBase
@@ -298,6 +354,11 @@ class DLL_LINKAGE CTownHandler : public IHandlerBase
 
 	std::map<CTown *, JsonNode> warMachinesToLoad;
 	std::vector<BuildingRequirementsHelper> requirementsToLoad;
+
+	const static ETerrainType::EETerrainType defaultGoodTerrain = ETerrainType::EETerrainType::GRASS;
+	const static ETerrainType::EETerrainType defaultEvilTerrain = ETerrainType::EETerrainType::LAVA;
+	const static ETerrainType::EETerrainType defaultNeutralTerrain = ETerrainType::EETerrainType::ROUGH;
+
 	void initializeRequirements();
 	void initializeWarMachines();
 
@@ -320,10 +381,18 @@ class DLL_LINKAGE CTownHandler : public IHandlerBase
 
 	void loadPuzzle(CFaction & faction, const JsonNode & source);
 
+	ETerrainType::EETerrainType getDefaultTerrainForAlignment(EAlignment::EAlignment aligment) const;
+
 	CFaction * loadFromJson(const JsonNode & data, const std::string & identifier);
 
 	void loadRandomFaction();
+
 public:
+	template<typename R, typename K>
+	static R getMappedValue(const K key, const R defval, const std::map<K, R> & map, bool required = true);
+	template<typename R>
+	static R getMappedValue(const JsonNode & node, const R defval, const std::map<std::string, R> & map, bool required = true);
+
 	std::vector<ConstTransitivePtr<CFaction> > factions;
 
 	CTown * randomTown;

@@ -44,10 +44,10 @@ struct armyStructure
 
 armyStructure evaluateArmyStructure(const CArmedInstance * army)
 {
-	ui64 totalStrenght = army->getArmyStrength();
-	double walkersStrenght = 0;
-	double flyersStrenght = 0;
-	double shootersStrenght = 0;
+	ui64 totalStrength = army->getArmyStrength();
+	double walkersStrength = 0;
+	double flyersStrength = 0;
+	double shootersStrength = 0;
 	ui32 maxSpeed = 0;
 
 	static const CSelector selectorSHOOTER = Selector::type(Bonus::SHOOTER);
@@ -65,23 +65,23 @@ armyStructure evaluateArmyStructure(const CArmedInstance * army)
 		const CCreature * creature = s.second->type;
 		if(creature->hasBonus(selectorSHOOTER, keySHOOTER))
 		{
-			shootersStrenght += s.second->getPower();
+			shootersStrength += s.second->getPower();
 			walker = false;
 		}
 		if(creature->hasBonus(selectorFLYING, keyFLYING))
 		{
-			flyersStrenght += s.second->getPower();
+			flyersStrength += s.second->getPower();
 			walker = false;
 		}
 		if(walker)
-			walkersStrenght += s.second->getPower();
+			walkersStrength += s.second->getPower();
 
 		vstd::amax(maxSpeed, creature->valOfBonuses(selectorSTACKS_SPEED, keySTACKS_SPEED));
 	}
 	armyStructure as;
-	as.walkers = walkersStrenght / totalStrenght;
-	as.shooters = shootersStrenght / totalStrenght;
-	as.flyers = flyersStrenght / totalStrenght;
+	as.walkers = static_cast<float>(walkersStrength / totalStrength);
+	as.shooters = static_cast<float>(shootersStrength / totalStrength);
+	as.flyers = static_cast<float>(flyersStrength / totalStrength);
 	as.maxSpeed = maxSpeed;
 	assert(as.walkers || as.flyers || as.shooters);
 	return as;

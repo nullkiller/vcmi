@@ -161,7 +161,7 @@ std::vector<CGPathNode *> NodeStorage::getInitialNodes()
 
 	initialNode->turns = 0;
 	initialNode->moveRemains = out.hero->movement;
-	initialNode->cost = 0.0;
+	initialNode->setCost(0.0);
 
 	return std::vector<CGPathNode *> { initialNode };
 }
@@ -169,7 +169,7 @@ std::vector<CGPathNode *> NodeStorage::getInitialNodes()
 void NodeStorage::commit(CDestinationNodeInfo & destination, const PathNodeInfo & source)
 {
 	assert(destination.node != source.node->theNodeBefore); //two tiles can't point to each other
-	destination.node->cost = destination.cost;
+	destination.node->setCost(destination.cost);
 	destination.node->moveRemains = destination.movementLeft;
 	destination.node->turns = destination.turn;
 	destination.node->theNodeBefore = source.node;
@@ -293,6 +293,28 @@ CPathfinder::CPathfinder(
 	initializeGraph();
 }
 
+
+void CPathfinder::push(CGPathNode * node)
+{
+	if(node && !node->inPQ)
+	{
+		node->inPQ = true;
+		node->pq = &this->pq;
+		auto handle = pq.push(node);
+		node->pqHandle = handle;
+	}
+}
+
+CGPathNode * CPathfinder::topAndPop()
+{
+	auto node = pq.top();
+
+	pq.pop();
+	node->inPQ = false;
+	node->pq = nullptr;
+	return node;
+}
+
 void CPathfinder::calculatePaths()
 {
 	//logGlobal->info("Calculating paths for hero %s (adress  %d) of player %d", hero->name, hero , hero->tempOwner);
@@ -321,15 +343,14 @@ void CPathfinder::calculatePaths()
 	while(!pq.empty())
 	{
 		counter++;
-		auto node = pq.top();
+		auto node = topAndPop();
 
 		source.setNode(gs, node);
-		pq.pop();
 		source.node->locked = true;
 
 		int movement = source.node->moveRemains;
 		uint8_t turn = source.node->turns;
-		float cost = source.node->cost;
+		float cost = source.node->getCost();
 
 		auto hlp = config->getOrCreatePathfinderHelper(source, gs);
 
@@ -380,7 +401,7 @@ void CPathfinder::calculatePaths()
 			}
 
 			if(!destination.blocked)
-				pq.push(destination.node);
+				push(destination.node);
 
 		} //neighbours loop
 
@@ -416,7 +437,7 @@ void CPathfinder::calculatePaths()
 				config->nodeStorage->commit(destination, source);
 
 				if(destination.node->action == CGPathNode::TELEPORT_NORMAL)
-					pq.push(destination.node);
+					push(destination.node);
 			}
 		}
 	} //queue loop
@@ -982,7 +1003,7 @@ bool CPathfinderHelper::passOneTurnLimitCheck(const PathNodeInfo & source) const
 	return true;
 }
 
-TurnInfo::BonusCache::BonusCache(TBonusListPtr bl)
+TurnInfo::BonusCache::BonusCache(TConstBonusListPtr bl)
 {
 	noTerrainPenalty.reserve(ETerrainType::ROCK);
 	for(int i = 0; i < ETerrainType::ROCK; i++)
@@ -1208,22 +1229,22 @@ int CPathfinderHelper::getMovementCost(
 
 	if(dt->blocked && ti->hasBonusOfType(Bonus::FLYING_MOVEMENT))
 	{
-		ret *= (100.0 + ti->valOfBonuses(Bonus::FLYING_MOVEMENT)) / 100.0;
+		ret = static_cast<int>(ret * (100.0 + ti->valOfBonuses(Bonus::FLYING_MOVEMENT)) / 100.0);
 	}
 	else if(dt->terType == ETerrainType::WATER)
 	{
 		if(hero->boat && ct->hasFavorableWinds() && dt->hasFavorableWinds())
-			ret *= 0.666;
+			ret = static_cast<int>(ret * 0.666);
 		else if(!hero->boat && ti->hasBonusOfType(Bonus::WATER_WALKING))
 		{
-			ret *= (100.0 + ti->valOfBonuses(Bonus::WATER_WALKING)) / 100.0;
+			ret = static_cast<int>(ret * (100.0 + ti->valOfBonuses(Bonus::WATER_WALKING)) / 100.0);
 		}
 	}
 
 	if(src.x != dst.x && src.y != dst.y) //it's diagonal move
 	{
 		int old = ret;
-		ret *= 1.414213;
+		ret = static_cast < int>(ret * 1.414213);
 		//diagonal move costs too much but normal move is possible - allow diagonal move for remaining move points
 		if(ret > remainingMovePoints && remainingMovePoints >= old)
 		{
@@ -1388,7 +1409,7 @@ bool CDestinationNodeInfo::isBetterWay() const
 	if(node->turns == 0xff) //we haven't been here before
 		return true;
 	else
-		return cost < node->cost; //this route is faster
+		return cost < node->getCost(); //this route is faster
 }
 
 bool PathNodeInfo::isNodeObjectVisitable() const

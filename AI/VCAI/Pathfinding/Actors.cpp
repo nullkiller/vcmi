@@ -88,7 +88,7 @@ std::string ObjectActor::toString() const
 HeroActor::HeroActor(const CGHeroInstance * hero, HeroRole heroRole, uint64_t chainMask, const Nullkiller * ai)
 	:ChainActor(hero, heroRole, chainMask)
 {
-	exchangeMap = new HeroExchangeMap(this, ai);
+	exchangeMap.reset(new HeroExchangeMap(this, ai));
 	setupSpecialActors();
 }
 
@@ -99,7 +99,7 @@ HeroActor::HeroActor(
 	const Nullkiller * ai)
 	:ChainActor(carrier, other,	army)
 {
-	exchangeMap = new HeroExchangeMap(this, ai);
+	exchangeMap.reset(new HeroExchangeMap(this, ai));
 	armyCost += army->armyCost;
 	actorAction = army->getActorAction();
 	setupSpecialActors();
@@ -198,10 +198,12 @@ bool HeroExchangeMap::canExchange(const ChainActor * other)
 				return;
 			}
 
+			TResources availableResources = resources - actor->armyCost - other->armyCost;
+
 			auto upgradeInfo = ai->armyManager->calculateCreateresUpgrade(
 				actor->creatureSet, 
 				other->getActorObject(),
-				resources - actor->armyCost - other->armyCost);
+				availableResources);
 
 			uint64_t reinforcment = upgradeInfo.upgradeValue;
 			
@@ -211,7 +213,10 @@ bool HeroExchangeMap::canExchange(const ChainActor * other)
 			auto obj = other->getActorObject();
 			if(obj && obj->ID == Obj::TOWN)
 			{
-				reinforcment += ai->armyManager->howManyReinforcementsCanBuy(actor->creatureSet, ai->cb->getTown(obj->id));
+				reinforcment += ai->armyManager->howManyReinforcementsCanBuy(
+					actor->creatureSet,
+					ai->cb->getTown(obj->id),
+					availableResources - upgradeInfo.upgradeCost);
 			}
 
 #if PATHFINDER_TRACE_LEVEL >= 2
@@ -242,6 +247,11 @@ ChainActor * HeroActor::exchange(const ChainActor * specialActor, const ChainAct
 	});
 
 	return &result->specialActors[index];
+}
+
+HeroExchangeMap::HeroExchangeMap(const HeroActor * actor, const Nullkiller * ai)
+	:actor(actor), ai(ai)
+{
 }
 
 HeroExchangeMap::~HeroExchangeMap()
@@ -339,7 +349,11 @@ HeroExchangeArmy * HeroExchangeMap::tryUpgrade(
 	}
 
 	if(target->getArmyStrength() <= army->getArmyStrength())
+	{
+		delete target;
+
 		return nullptr;
+	}
 
 	return target;
 }

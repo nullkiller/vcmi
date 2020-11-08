@@ -175,10 +175,15 @@ std::vector<CGPathNode *> AINodeStorage::getInitialNodes()
 			getOrCreateNode(actor->initialPosition, actor->layer, actor)
 			.get();
 
+		if(!initialNode)
+			continue;
+
+		initialNode->inPQ = false;
+		initialNode->pq = nullptr;
 		initialNode->turns = actor->initialTurn;
 		initialNode->moveRemains = actor->initialMovement;
 		initialNode->danger = 0;
-		initialNode->cost = actor->initialTurn;
+		initialNode->setCost(actor->initialTurn);
 		initialNode->action = CGPathNode::ENodeAction::NORMAL;
 
 		if(actor->isMovable)
@@ -240,7 +245,7 @@ void AINodeStorage::commit(
 	float cost) const
 {
 	destination->action = action;
-	destination->cost = cost;
+	destination->setCost(cost);
 	destination->moveRemains = movementLeft;
 	destination->turns = turn;
 	destination->armyLoss = source->armyLoss;
@@ -254,7 +259,7 @@ void AINodeStorage::commit(
 		"Commited %s -> %s, cost: %f, turn: %s, mp: %d, hero: %s, mask: %x, army: %lld",
 		source->coord.toString(),
 		destination->coord.toString(),
-		destination->cost,
+		destination->getCost(),
 		std::to_string(destination->turns),
 		destination->moveRemains,
 		destination->actor->toString(),
@@ -593,19 +598,19 @@ void AINodeStorage::addHeroChain(const std::vector<ExchangeCandidate> & result)
 			continue;
 		}
 		
-		if(exchangeNode->turns != 0xFF && exchangeNode->cost < chainInfo.cost)
+		if(exchangeNode->turns != 0xFF && exchangeNode->getCost() < chainInfo.getCost())
 		{
 #if PATHFINDER_TRACE_LEVEL >= 2
 			logAi->trace(
 				"Exchange at %s is is not effective enough. %f < %f", 
 				exchangeNode->coord.toString(), 
-				exchangeNode->cost, 
-				chainInfo.cost);
+				exchangeNode->getCost(), 
+				chainInfo.getCost());
 #endif
 			continue;
 		}
 
-		commit(exchangeNode, carrier, carrier->action, chainInfo.turns, chainInfo.moveRemains, chainInfo.cost);
+		commit(exchangeNode, carrier, carrier->action, chainInfo.turns, chainInfo.moveRemains, chainInfo.getCost());
 
 		if(carrier->specialAction || carrier->chainOther)
 		{
@@ -629,7 +634,7 @@ void AINodeStorage::addHeroChain(const std::vector<ExchangeCandidate> & result)
 			other->actor->toString(), 
 			exchangeNode->actor->toString(),
 			exchangeNode->actor->chainMask,
-			exchangeNode->cost,
+			exchangeNode->getCost(),
 			std::to_string(exchangeNode->turns),
 			exchangeNode->moveRemains,
 			exchangeNode->actor->armyValue);
@@ -652,7 +657,7 @@ ExchangeCandidate AINodeStorage::calculateExchange(
 	candidate.actor = exchangeActor;
 	candidate.armyLoss = carrierParentNode->armyLoss + otherParentNode->armyLoss;
 	candidate.turns = carrierParentNode->turns;
-	candidate.cost = carrierParentNode->cost + otherParentNode->cost / 1000.0;
+	candidate.setCost(carrierParentNode->getCost() + otherParentNode->getCost() / 1000.0);
 	candidate.moveRemains = carrierParentNode->moveRemains;
 
 	if(carrierParentNode->turns < otherParentNode->turns)
@@ -662,7 +667,7 @@ ExchangeCandidate AINodeStorage::calculateExchange(
 			+ carrierParentNode->moveRemains / (float)moveRemains;
 
 		candidate.turns = otherParentNode->turns;
-		candidate.cost += waitingCost;
+		candidate.setCost(candidate.getCost() + waitingCost);
 		candidate.moveRemains = moveRemains;
 	}
 
@@ -872,7 +877,7 @@ struct TowmPortalFinder
 					continue;
 			}
 
-			if(!bestNode || bestNode->cost > node->cost)
+			if(!bestNode || bestNode->getCost() > node->getCost())
 				bestNode = node;
 		}
 
@@ -894,9 +899,9 @@ struct TowmPortalFinder
 		AIPathNode * node = nodeOptional.get();
 		float movementCost = (float)movementNeeded / (float)hero->maxMovePoints(EPathfindingLayer::LAND);
 
-		movementCost += bestNode->cost;
+		movementCost += bestNode->getCost();
 
-		if(node->action == CGPathNode::UNKNOWN || node->cost > movementCost)
+		if(node->action == CGPathNode::UNKNOWN || node->getCost() > movementCost)
 		{
 			nodeStorage->commit(
 				node,
@@ -1008,7 +1013,7 @@ bool AINodeStorage::hasBetterChain(
 
 		if(node.danger <= candidateNode->danger && candidateNode->actor == node.actor->battleActor)
 		{
-			if(node.cost < candidateNode->cost)
+			if(node.getCost() < candidateNode->getCost())
 			{
 #if PATHFINDER_TRACE_LEVEL >= 2
 				logAi->trace(
@@ -1032,7 +1037,7 @@ bool AINodeStorage::hasBetterChain(
 		auto candidateArmyValue = candidateActor->armyValue - candidateNode->armyLoss;
 
 		if(nodeArmyValue > candidateArmyValue
-			&& node.cost <= candidateNode->cost)
+			&& node.getCost() <= candidateNode->getCost())
 		{
 #if PATHFINDER_TRACE_LEVEL >= 2
 			logAi->trace(
@@ -1051,10 +1056,10 @@ bool AINodeStorage::hasBetterChain(
 		{
 			if(nodeArmyValue == candidateArmyValue
 				&& nodeActor->heroFightingStrength >= candidateActor->heroFightingStrength
-				&& node.cost <= candidateNode->cost)
+				&& node.getCost() <= candidateNode->getCost())
 			{
 				if(nodeActor->heroFightingStrength == candidateActor->heroFightingStrength
-					&& node.cost == candidateNode->cost
+					&& node.getCost() == candidateNode->getCost()
 					&& &node < candidateNode)
 				{
 					continue;
@@ -1140,7 +1145,8 @@ void AINodeStorage::fillChainInfo(const AIPathNode * node, AIPath & path, int pa
 		//if(node->actor->hero->visitablePos() != node->coord)
 		{
 			AIPathNodeInfo pathNode;
-			pathNode.cost = node->cost;
+
+			pathNode.cost = node->getCost();
 			pathNode.targetHero = node->actor->hero;
 			pathNode.chainMask = node->actor->chainMask;
 			pathNode.specialAction = node->specialAction;
