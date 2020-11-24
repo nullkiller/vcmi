@@ -157,11 +157,16 @@ void NodeStorage::resetTile(
 
 std::vector<CGPathNode *> NodeStorage::getInitialNodes()
 {
-	auto initialNode =  getNode(out.hpos, out.hero->boat ? EPathfindingLayer::SAIL : EPathfindingLayer::LAND);
+	auto initialNode = getNode(out.hpos, out.hero->boat ? EPathfindingLayer::SAIL : EPathfindingLayer::LAND);
 
 	initialNode->turns = 0;
 	initialNode->moveRemains = out.hero->movement;
 	initialNode->setCost(0.0);
+
+	if(!initialNode->coord.valid())
+	{
+		initialNode->coord = out.hpos;
+	}
 
 	return std::vector<CGPathNode *> { initialNode };
 }
@@ -1009,14 +1014,14 @@ TurnInfo::BonusCache::BonusCache(TConstBonusListPtr bl)
 	for(int i = 0; i < ETerrainType::ROCK; i++)
 	{
 		noTerrainPenalty.push_back(static_cast<bool>(
-				bl->getFirst(Selector::type(Bonus::NO_TERRAIN_PENALTY).And(Selector::subtype(i)))));
+				bl->getFirst(Selector::type()(Bonus::NO_TERRAIN_PENALTY).And(Selector::subtype()(i)))));
 	}
 
-	freeShipBoarding = static_cast<bool>(bl->getFirst(Selector::type(Bonus::FREE_SHIP_BOARDING)));
-	flyingMovement = static_cast<bool>(bl->getFirst(Selector::type(Bonus::FLYING_MOVEMENT)));
-	flyingMovementVal = bl->valOfBonuses(Selector::type(Bonus::FLYING_MOVEMENT));
-	waterWalking = static_cast<bool>(bl->getFirst(Selector::type(Bonus::WATER_WALKING)));
-	waterWalkingVal = bl->valOfBonuses(Selector::type(Bonus::WATER_WALKING));
+	freeShipBoarding = static_cast<bool>(bl->getFirst(Selector::type()(Bonus::FREE_SHIP_BOARDING)));
+	flyingMovement = static_cast<bool>(bl->getFirst(Selector::type()(Bonus::FLYING_MOVEMENT)));
+	flyingMovementVal = bl->valOfBonuses(Selector::type()(Bonus::FLYING_MOVEMENT));
+	waterWalking = static_cast<bool>(bl->getFirst(Selector::type()(Bonus::WATER_WALKING)));
+	waterWalkingVal = bl->valOfBonuses(Selector::type()(Bonus::WATER_WALKING));
 }
 
 TurnInfo::TurnInfo(const CGHeroInstance * Hero, const int turn)
@@ -1062,7 +1067,7 @@ bool TurnInfo::hasBonusOfType(Bonus::BonusType type, int subtype) const
 	}
 
 	return static_cast<bool>(
-			bonuses->getFirst(Selector::type(type).And(Selector::subtype(subtype))));
+			bonuses->getFirst(Selector::type()(type).And(Selector::subtype()(subtype))));
 }
 
 int TurnInfo::valOfBonuses(Bonus::BonusType type, int subtype) const
@@ -1075,7 +1080,7 @@ int TurnInfo::valOfBonuses(Bonus::BonusType type, int subtype) const
 		return bonusCache->waterWalkingVal;
 	}
 
-	return bonuses->valOfBonuses(Selector::type(type).And(Selector::subtype(subtype)));
+	return bonuses->valOfBonuses(Selector::type()(type).And(Selector::subtype()(subtype)));
 }
 
 int TurnInfo::getMaxMovePoints(const EPathfindingLayer layer) const
