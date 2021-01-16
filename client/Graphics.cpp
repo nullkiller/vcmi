@@ -10,6 +10,7 @@
 #include "StdInc.h"
 #include "Graphics.h"
 
+#include "tbb/parallel_invoke.h"
 #include "../lib/filesystem/Filesystem.h"
 #include "../lib/filesystem/CBinaryReader.h"
 #include "gui/SDL_Extensions.h"
@@ -121,17 +122,15 @@ void Graphics::initializeBattleGraphics()
 }
 Graphics::Graphics()
 {
-	#if 0
+	#if 1
 
-	std::vector<Task> tasks; //preparing list of graphics to load
-	tasks += std::bind(&Graphics::loadFonts,this);
-	tasks += std::bind(&Graphics::loadPaletteAndColors,this);
-	tasks += std::bind(&Graphics::initializeBattleGraphics,this);
-	tasks += std::bind(&Graphics::loadErmuToPicture,this);
-	tasks += std::bind(&Graphics::initializeImageLists,this);
+	tbb::parallel_invoke(
+		std::bind(&Graphics::loadFonts,this),
+		std::bind(&Graphics::loadPaletteAndColors,this),
+		std::bind(&Graphics::initializeBattleGraphics,this),
+		std::bind(&Graphics::loadErmuToPicture,this),
+		std::bind(&Graphics::initializeImageLists,this));
 
-	CThreadHelper th(&tasks,std::max((ui32)1,boost::thread::hardware_concurrency()));
-	th.run();
 	#else
 	loadFonts();
 	loadPaletteAndColors();

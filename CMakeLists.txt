@@ -63,6 +63,10 @@ set(PACKAGE_FILE_NAME "" CACHE STRING "Override for CPack package filename")
 #        Miscellaneous options             #
 ############################################
 
+if(MSVC)
+	set(CMAKE_CONFIGURATION_TYPES "Release;RelWithDebInfo")
+endif()
+
 set(CMAKE_MODULE_PATH ${CMAKE_HOME_DIRECTORY}/cmake_modules)
 # Contains custom functions and macros, but don't altering any options
 include(VCMIUtils)
@@ -224,7 +228,7 @@ find_package(SDL2 REQUIRED)
 find_package(SDL2_image REQUIRED)
 find_package(SDL2_mixer REQUIRED)
 find_package(SDL2_ttf REQUIRED)
-find_package(tbb CONFIG REQUIRED)
+find_package(TBB REQUIRED)
 
 if(ENABLE_LAUNCHER)
 	# Widgets finds its own dependencies (QtGui and QtCore).

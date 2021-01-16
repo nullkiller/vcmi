@@ -30,7 +30,8 @@ mxe-$MXE_TARGET-sdl2-mixer \
 mxe-$MXE_TARGET-sdl2-ttf \
 mxe-$MXE_TARGET-ffmpeg \
 mxe-$MXE_TARGET-qt \
-mxe-$MXE_TARGET-qtbase
+mxe-$MXE_TARGET-qtbase \
+mxe-$MXE_TARGET-intel-tbb
 
 fi # Disable
 
