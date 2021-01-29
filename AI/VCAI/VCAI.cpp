@@ -592,7 +592,8 @@ void VCAI::showBlockingDialog(const std::string & text, const std::vector<Compon
 		if(hero.validAndSet()
 			&& components.size() == 2
 			&& components.front().id == Component::RESOURCE
-			&& nullkiller->heroManager->getHeroRole(hero) != HeroRole::MAIN)
+			&& (nullkiller->heroManager->getHeroRole(hero) != HeroRole::MAIN
+			|| nullkiller->buildAnalyzer->getGoldPreasure() > MAX_GOLD_PEASURE))
 		{
 			sel = 1; // for now lets pick gold from a chest.
 		}
@@ -707,7 +708,7 @@ bool VCAI::makePossibleUpgrades(const CArmedInstance * obj)
 		{
 			UpgradeInfo ui;
 			myCb->getUpgradeInfo(obj, SlotID(i), ui);
-			if(ui.oldID >= 0 && myCb->getResourceAmount().canAfford(ui.cost[0] * s->count))
+			if(ui.oldID >= 0 && nullkiller->getFreeResources().canAfford(ui.cost[0] * s->count))
 			{
 				myCb->upgradeCreature(obj, SlotID(i), ui.newID[0]);
 				upgraded = true;
@@ -789,11 +790,11 @@ void VCAI::performObjectInteraction(const CGObjectInstance * obj, HeroPtr h)
 		{
 			makePossibleUpgrades(h.get());
 
-			if(!nullkiller || !h->visitedTown->garrisonHero || !nullkiller->isHeroLocked(h->visitedTown->garrisonHero))
+			if(!h->visitedTown->garrisonHero || !nullkiller->isHeroLocked(h->visitedTown->garrisonHero))
 				moveCreaturesToHero(h->visitedTown);
 
-			if(ai->nullkiller->heroManager->getHeroRole(h) == HeroRole::MAIN && !h->hasSpellbook()
-				&& cb->getResourceAmount(Res::GOLD) >= GameConstants::SPELLBOOK_GOLD_COST)
+			if(nullkiller->heroManager->getHeroRole(h) == HeroRole::MAIN && !h->hasSpellbook()
+				&& nullkiller->getFreeGold() >= GameConstants::SPELLBOOK_GOLD_COST)
 			{
 				if(h->visitedTown->hasBuilt(BuildingID::MAGES_GUILD_1))
 					cb->buyArtifact(h.get(), ArtifactID::SPELLBOOK);

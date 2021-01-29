@@ -460,7 +460,7 @@ bool shouldVisit(const Nullkiller * ai, const CGHeroInstance * h, const CGObject
 	case Obj::SCHOOL_OF_MAGIC:
 	case Obj::SCHOOL_OF_WAR:
 	{
-		if(ai->cb->getResourceAmount(Res::GOLD) < 1000)
+		if(ai->getFreeGold() < 1000)
 			return false;
 		break;
 	}
@@ -473,7 +473,7 @@ bool shouldVisit(const Nullkiller * ai, const CGHeroInstance * h, const CGObject
 		if(ai->heroManager->getHeroRole(h) == HeroRole::SCOUT)
 			return false;
 
-		TResources myRes = ai->cb->getResourceAmount();
+		TResources myRes = ai->getFreeResources();
 		if(myRes[Res::GOLD] < 2000 || myRes[Res::GEMS] < 10)
 			return false;
 		break;
@@ -483,20 +483,10 @@ bool shouldVisit(const Nullkiller * ai, const CGHeroInstance * h, const CGObject
 	case Obj::PRISON:
 		return ai->cb->getHeroesInfo().size() < VLC->modh->settings.MAX_HEROES_ON_MAP_PER_PLAYER;
 	case Obj::TAVERN:
-	{
-		//TODO: make AI actually recruit heroes
-		//TODO: only on request
-		if(ai->cb->getHeroesInfo().size() >= VLC->modh->settings.MAX_HEROES_ON_MAP_PER_PLAYER)
-			return false;
-		else if(ai->cb->getResourceAmount(Res::GOLD) < GameConstants::HERO_GOLD_COST)
-			return false;
-		break;
-	}
-	case Obj::BOAT:
-		return false;
-		//Boats are handled by pathfinder
 	case Obj::EYE_OF_MAGI:
-		return false; //this object is useless to visit, but could be visited indefinitely
+	case Obj::BOAT:
+	case Obj::SIGN:
+		return false;
 	}
 
 	if(obj->wasVisited(h)) //it must pointer to hero instance, heroPtr calls function wasVisited(ui8 player);

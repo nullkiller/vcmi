@@ -36,7 +36,8 @@ Goals::TGoalVec RecruitHeroBehavior::decompose() const
 		if(!town->garrisonHero && !town->visitingHero && ai->canRecruitAnyHero(town))
 		{
 			if(cb->getHeroesInfo().size() < cb->getTownsInfo().size() + 1
-				|| cb->getResourceAmount(Res::GOLD) > 10000)
+				|| (ai->nullkiller->getFreeResources()[Res::GOLD] > 10000
+					&& ai->nullkiller->buildAnalyzer->getGoldPreasure() < MAX_GOLD_PEASURE))
 			{
 				tasks.push_back(Goals::sptr(Goals::RecruitHero(town).setpriority(3)));
 			}

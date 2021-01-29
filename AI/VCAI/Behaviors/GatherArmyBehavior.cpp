@@ -173,7 +173,7 @@ Goals::TGoalVec GatherArmyBehavior::upgradeArmy(const CGTownInstance * upgrader)
 {
 	Goals::TGoalVec tasks;
 	const int3 pos = upgrader->visitablePos();
-	TResources availableResources = cb->getResourceAmount();
+	TResources availableResources = ai->nullkiller->getFreeResources();
 
 #if AI_TRACE_LEVEL >= 1
 	logAi->trace("Checking ways to upgrade army in town %s, %s", upgrader->getObjectName(), pos.toString());

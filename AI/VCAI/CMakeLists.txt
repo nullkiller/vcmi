@@ -23,6 +23,7 @@ set(VCAI_SRCS
 		Engine/AIMemory.cpp
 		Goals/AbstractGoal.cpp
 		Goals/Composition.cpp
+		Goals/SaveResources.cpp
 		Goals/BuildBoat.cpp
 		Goals/BuildThis.cpp
 		Goals/DismissHero.cpp
@@ -85,6 +86,7 @@ set(VCAI_HEADERS
 		Goals/Composition.h
 		Goals/Invalid.h
 		Goals/BuildBoat.h
+		Goals/SaveResources.h
 		Goals/BuildThis.h
 		Goals/DismissHero.h
 		Goals/BuyArmy.h

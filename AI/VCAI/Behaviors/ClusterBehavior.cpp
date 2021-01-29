@@ -74,15 +74,20 @@ Goals::TGoalVec ClusterBehavior::decomposeCluster(std::shared_ptr<ObjectCluster>
 
 		blockerPaths.push_back(*path);
 
-		blockerPaths.back().nodes.clear();
+		AIPath & clonedPath = blockerPaths.back();
+
+		clonedPath.nodes.clear();
 
 		for(auto node = path->nodes.rbegin(); node != path->nodes.rend(); node++)
 		{
-			blockerPaths.back().nodes.insert(blockerPaths.back().nodes.begin(), *node);
+			clonedPath.nodes.insert(clonedPath.nodes.begin(), *node);
 
 			if(node->coord == blockerPos || cb->getGuardingCreaturePosition(node->coord) == blockerPos)
 				break;
 		}
+
+		for(auto & node : clonedPath.nodes)
+			node.parentIndex -= path->nodes.size() - clonedPath.nodes.size();
 
 #if AI_TRACE_LEVEL >= 2
 		logAi->trace("Unlock path found %s", blockerPaths.back().toString());

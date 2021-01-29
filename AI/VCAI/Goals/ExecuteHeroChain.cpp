@@ -59,6 +59,11 @@ void ExecuteHeroChain::accept(VCAI * ai)
 		const CGHeroInstance * hero = node.targetHero;
 		HeroPtr heroPtr = hero;
 
+		if(node.parentIndex >= i)
+		{
+			logAi->error("Invalid parentIndex while executing node " + node.coord.toString());
+		}
+
 		if(vstd::contains(blockedIndexes, i))
 		{
 			blockedIndexes.insert(node.parentIndex);

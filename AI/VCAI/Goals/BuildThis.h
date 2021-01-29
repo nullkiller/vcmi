@@ -34,19 +34,8 @@ namespace Goals
 			bid = buildingInfo.id;
 			town = townInfo.town;
 		}
-		BuildThis(BuildingID Bid, const CGTownInstance * tid)
-			: ElementarGoal(Goals::BUILD_STRUCTURE)
-		{
-			bid = Bid;
-			town = tid;
-			priority = 1;
-		}
-		BuildThis(BuildingID Bid)
-			: ElementarGoal(Goals::BUILD_STRUCTURE)
-		{
-			bid = Bid;
-			priority = 1;
-		}
+		BuildThis(BuildingID Bid, const CGTownInstance * tid);
+
 		virtual bool operator==(const BuildThis & other) const override;
 		virtual std::string toString() const override;
 		void accept(VCAI * ai) override;

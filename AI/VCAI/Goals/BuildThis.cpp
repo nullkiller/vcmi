@@ -21,6 +21,21 @@ extern boost::thread_specific_ptr<VCAI> ai;
 
 using namespace Goals;
 
+
+BuildThis::BuildThis(BuildingID Bid, const CGTownInstance * tid)
+	: ElementarGoal(Goals::BUILD_STRUCTURE)
+{
+	buildingInfo = BuildingInfo(
+		tid->town->buildings.at(Bid),
+		nullptr,
+		CreatureID::NONE,
+		tid,
+		nullptr);
+
+	bid = Bid;
+	town = tid;
+}
+
 bool BuildThis::operator==(const BuildThis & other) const
 {
 	return town == other.town && bid == other.bid;
@@ -28,7 +43,7 @@ bool BuildThis::operator==(const BuildThis & other) const
 
 std::string BuildThis::toString() const
 {
-	return "Build " + buildingInfo.name + "(" + std::to_string(bid) + ") in " + town->name;
+	return "Build " + buildingInfo.name + " in " + town->name;
 }
 
 void BuildThis::accept(VCAI * ai)
