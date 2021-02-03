@@ -253,7 +253,6 @@ void AIGateway::tileHidden(const std::unordered_set<int3, ShashInt3> & pos)
 	NET_EVENT_HANDLER;
 
 	nullkiller->memory->removeInvisibleObjects(myCb.get());
-	clearPathsInfo();
 }
 
 void AIGateway::tileRevealed(const std::unordered_set<int3, ShashInt3> & pos)
@@ -265,8 +264,6 @@ void AIGateway::tileRevealed(const std::unordered_set<int3, ShashInt3> & pos)
 		for(const CGObjectInstance * obj : myCb->getVisitableObjs(tile))
 			addVisitableObj(obj);
 	}
-
-	clearPathsInfo();
 }
 
 void AIGateway::heroExchangeStarted(ObjectInstanceID hero1, ObjectInstanceID hero2, QueryID query)
@@ -1014,24 +1011,6 @@ void AIGateway::recruitCreatures(const CGDwelling * d, const CArmedInstance * re
 	}
 }
 
-bool AIGateway::isTileNotReserved(const CGHeroInstance * h, int3 t) const
-{
-	if(t.valid())
-	{
-		auto obj = cb->getTopObj(t);
-		if(obj && vstd::contains(ai->reservedObjs, obj)
-			&& vstd::contains(reservedHeroesMap, h)
-			&& !vstd::contains(reservedHeroesMap.at(h), obj))
-			return false; //do not capture object reserved by another hero
-		else
-			return true;
-	}
-	else
-	{
-		return false;
-	}
-}
-
 bool AIGateway::canRecruitAnyHero(const CGTownInstance * t) const
 {
 	//TODO: make gathering gold, building tavern or conquering town (?) possible subgoals
@@ -1074,23 +1053,6 @@ void AIGateway::waitTillFree()
 {
 	auto unlock = vstd::makeUnlockSharedGuard(CGameState::mutex);
 	status.waitTillFree();
-}
-
-void AIGateway::markHeroUnableToExplore(HeroPtr h)
-{
-	heroesUnableToExplore.insert(h);
-}
-void AIGateway::markHeroAbleToExplore(HeroPtr h)
-{
-	vstd::erase_if_present(heroesUnableToExplore, h);
-}
-bool AIGateway::isAbleToExplore(HeroPtr h)
-{
-	return !vstd::contains(heroesUnableToExplore, h);
-}
-void AIGateway::clearPathsInfo()
-{
-	heroesUnableToExplore.clear();
 }
 
 void AIGateway::retrieveVisitableObjs(std::vector<const CGObjectInstance *> & out, bool includeOwned) const
@@ -1343,8 +1305,6 @@ bool AIGateway::moveHeroToTile(int3 dst, HeroPtr h)
 
 		if(startHpos == h->visitablePos() && !ret) //we didn't move and didn't reach the target
 		{
-			vstd::erase_if_present(lockedHeroes, h); //hero seemingly is confused or has only 95mp which is not enough to move
-			invalidPathHeroes.insert(h);
 			throw cannotFulfillGoalException("Invalid path found!");
 		}
 
@@ -1369,7 +1329,6 @@ void AIGateway::tryRealize(Goals::DigAtTile & g)
 	}
 	else
 	{
-		ai->lockedHeroes[g.hero] = sptr(g); //hero who tries to dig shouldn't do anything else
 		throw cannotFulfillGoalException("A hero can't dig!\n");
 	}
 }
@@ -1507,12 +1466,6 @@ void AIGateway::requestActionASAP(std::function<void()> whatToDo)
 void AIGateway::lostHero(HeroPtr h)
 {
 	logAi->debug("I lost my hero %s. It's best to forget and move on.", h.name);
-
-	vstd::erase_if_present(visitedHeroes, h);
-	for (auto heroVec : visitedHeroes)
-	{
-		vstd::erase_if_present(heroVec.second, h);
-	}
 }
 
 void AIGateway::answerQuery(QueryID queryID, int selection)

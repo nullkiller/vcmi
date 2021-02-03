@@ -1,5 +1,5 @@
 /*
- * AIGateway.h, part of VCMI engine
+ * VCAI.h, part of VCMI engine
  *
  * Authors: listed in file AUTHORS in main folder
  *
@@ -13,7 +13,9 @@
 #include "Goals/AbstractGoal.h"
 #include "../../lib/AI_Base.h"
 #include "../../CCallback.h"
+
 #include "../../lib/CThreadHelper.h"
+
 #include "../../lib/GameConstants.h"
 #include "../../lib/VCMI_Lib.h"
 #include "../../lib/CBuildingHandler.h"
@@ -23,9 +25,10 @@
 #include "../../lib/spells/CSpellHandler.h"
 #include "../../lib/CondSh.h"
 #include "Pathfinding/AIPathfinder.h"
-#include "Engine/Nullkiller.h"
 
 struct QuestInfo;
+
+class AIhelper;
 
 class AIStatus
 {
@@ -70,42 +73,69 @@ public:
 	}
 };
 
-// The gateway is responsible for AI events handling. Copied from VCAI.h and refined a bit
-// Probably we can use concept of hooks to handle event in their related goals
-class DLL_EXPORT AIGateway : public CAdventureAI
+class DLL_EXPORT VCAI : public CAdventureAI
 {
 public:
+
+	friend class FuzzyHelper;
+	friend class ResourceManager;
+	friend class BuildingManager;
+
+	std::map<TeleportChannelID, std::shared_ptr<TeleportChannel>> knownTeleportChannels;
+	std::map<const CGObjectInstance *, const CGObjectInstance *> knownSubterraneanGates;
 	ObjectInstanceID destinationTeleport;
 	int3 destinationTeleportPos;
 	std::vector<ObjectInstanceID> teleportChannelProbingList; //list of teleport channel exits that not visible and need to be (re-)explored
 	//std::vector<const CGObjectInstance *> visitedThisWeek; //only OPWs
+	std::map<HeroPtr, std::set<const CGTownInstance *>> townVisitsThisWeek;
 
-	//std::set<HeroPtr> invalidPathHeroes; //FIXME, just a workaround
-	//std::map<HeroPtr, Goals::TSubgoal> lockedHeroes; //TODO: allow non-elementar objectives
-	//std::map<HeroPtr, std::set<const CGObjectInstance *>> reservedHeroesMap; //objects reserved by specific heroes
-	//std::set<HeroPtr> heroesUnableToExplore; //these heroes will not be polled for exploration in current state of game
+	//part of mainLoop, but accessible from outisde
+	std::vector<Goals::TSubgoal> basicGoals;
+	Goals::TGoalVec goalsToRemove;
+	Goals::TGoalVec goalsToAdd;
+	std::map<Goals::TSubgoal, Goals::TGoalVec> ultimateGoalsFromBasic; //theoreticlaly same goal can fulfill multiple basic goals
+
+	std::set<HeroPtr> invalidPathHeroes; //FIXME, just a workaround
+	std::map<HeroPtr, Goals::TSubgoal> lockedHeroes; //TODO: allow non-elementar objectives
+	std::map<HeroPtr, std::set<const CGObjectInstance *>> reservedHeroesMap; //objects reserved by specific heroes
+	std::set<HeroPtr> heroesUnableToExplore; //these heroes will not be polled for exploration in current state of game
 
 	//sets are faster to search, also do not contain duplicates
-	//std::set<const CGObjectInstance *> reservedObjs; //to be visited by specific hero
-	//std::map<HeroPtr, std::set<HeroPtr>> visitedHeroes; //visited this turn //FIXME: this is just bug workaround
+	std::set<const CGObjectInstance *> visitableObjs;
+	std::set<const CGObjectInstance *> alreadyVisited;
+	std::set<const CGObjectInstance *> reservedObjs; //to be visited by specific hero
+	std::map<HeroPtr, std::set<HeroPtr>> visitedHeroes; //visited this turn //FIXME: this is just bug workaround
 
 	AIStatus status;
 	std::string battlename;
+
 	std::shared_ptr<CCallback> myCb;
+
 	std::unique_ptr<boost::thread> makingTurn;
 private:
 	boost::mutex turnInterruptionMutex;
 public:
 	ObjectInstanceID selectedObject;
 
-	std::unique_ptr<Nullkiller> nullkiller;
+	AIhelper * ah;
 
-	AIGateway();
-	virtual ~AIGateway();
+	VCAI();
+	virtual ~VCAI();
 
-	//TODO: extract to apropriate goals
+	//TODO: use only smart pointers?
+	void tryRealize(Goals::Explore & g);
+	void tryRealize(Goals::RecruitHero & g);
+	void tryRealize(Goals::VisitTile & g);
+	void tryRealize(Goals::VisitObj & g);
+	void tryRealize(Goals::VisitHero & g);
+	void tryRealize(Goals::BuildThis & g);
 	void tryRealize(Goals::DigAtTile & g);
 	void tryRealize(Goals::Trade & g);
+	void tryRealize(Goals::BuyArmy & g);
+	void tryRealize(Goals::Invalid & g);
+	void tryRealize(Goals::AbstractGoal & g);
+
+	bool isTileNotReserved(const CGHeroInstance * h, int3 t) const; //the tile is not occupied by allied hero and the object is not reserved
 
 	std::string getBattleAIName() const override;
 
@@ -170,51 +200,207 @@ public:
 	void battleEnd(const BattleResult * br) override;
 
 	void makeTurn();
+	void mainLoop();
+	void performTypicalActions();
 
 	void buildArmyIn(const CGTownInstance * t);
+	void striveToGoal(Goals::TSubgoal ultimateGoal);
+	Goals::TSubgoal decomposeGoal(Goals::TSubgoal ultimateGoal);
 	void endTurn();
+	void wander(HeroPtr h);
+	void setGoal(HeroPtr h, Goals::TSubgoal goal);
+	void evaluateGoal(HeroPtr h); //evaluates goal assigned to hero, if any
+	void completeGoal(Goals::TSubgoal goal); //safely removes goal from reserved hero
 
-	// TODO: all the routines like recruiting hero or building army should be removed from here and extracted to elementar goals or whatever
 	void recruitHero(const CGTownInstance * t, bool throwing = false);
+	bool isGoodForVisit(const CGObjectInstance * obj, HeroPtr h, boost::optional<float> movementCostLimit = boost::none);
+	bool isGoodForVisit(const CGObjectInstance * obj, HeroPtr h, const AIPath & path) const;
+	//void recruitCreatures(const CGTownInstance * t);
 	void recruitCreatures(const CGDwelling * d, const CArmedInstance * recruiter);
 	void pickBestCreatures(const CArmedInstance * army, const CArmedInstance * source); //called when we can't find a slot for new stack
 	void pickBestArtifacts(const CGHeroInstance * h, const CGHeroInstance * other = nullptr);
 	void moveCreaturesToHero(const CGTownInstance * t);
 	void performObjectInteraction(const CGObjectInstance * obj, HeroPtr h);
-	bool makePossibleUpgrades(const CArmedInstance * obj);
 
 	bool moveHeroToTile(int3 dst, HeroPtr h);
-	void buildStructure(const CGTownInstance * t, BuildingID building);
+	void buildStructure(const CGTownInstance * t, BuildingID building); //TODO: move to BuildingManager
 
 	void lostHero(HeroPtr h); //should remove all references to hero (assigned tasks and so on)
 	void waitTillFree();
 
 	void addVisitableObj(const CGObjectInstance * obj);
+	void markObjectVisited(const CGObjectInstance * obj);
+	void reserveObject(HeroPtr h, const CGObjectInstance * obj); //TODO: reserve all objects that heroes attempt to visit
+	void unreserveObject(HeroPtr h, const CGObjectInstance * obj);
+
+	void markHeroUnableToExplore(HeroPtr h);
+	void markHeroAbleToExplore(HeroPtr h);
+	bool isAbleToExplore(HeroPtr h);
+	void clearPathsInfo();
 
 	void validateObject(const CGObjectInstance * obj); //checks if object is still visible and if not, removes references to it
 	void validateObject(ObjectIdRef obj); //checks if object is still visible and if not, removes references to it
+	void validateVisitableObjs();
 	void retrieveVisitableObjs(std::vector<const CGObjectInstance *> & out, bool includeOwned = false) const;
 	void retrieveVisitableObjs();
 	virtual std::vector<const CGObjectInstance *> getFlaggedObjects() const;
 
+	const CGObjectInstance * lookForArt(int aid) const;
+	bool isAccessible(const int3 & pos) const;
 	HeroPtr getHeroWithGrail() const;
+
+	const CGObjectInstance * getUnvisitedObj(const std::function<bool(const CGObjectInstance *)> & predicate);
+	bool isAccessibleForHero(const int3 & pos, HeroPtr h, bool includeAllies = false) const;
+	//optimization - use one SM for every hero call
 
 	const CGTownInstance * findTownWithTavern() const;
 	bool canRecruitAnyHero(const CGTownInstance * t = NULL) const;
+
+	Goals::TSubgoal getGoal(HeroPtr h) const;
+	bool canAct(HeroPtr h) const;
+	std::vector<HeroPtr> getUnblockedHeroes() const;
+	std::vector<HeroPtr> getMyHeroes() const;
+	HeroPtr primaryHero() const;
+	void checkHeroArmy(HeroPtr h);
 
 	void requestSent(const CPackForServer * pack, int requestID) override;
 	void answerQuery(QueryID queryID, int selection);
 	//special function that can be called ONLY from game events handling thread and will send request ASAP
 	void requestActionASAP(std::function<void()> whatToDo);
 
+	#if 0
+	//disabled due to issue 2890
+	template<typename Handler> void registerGoals(Handler & h)
+	{
+		//h.template registerType<Goals::AbstractGoal, Goals::BoostHero>();
+		h.template registerType<Goals::AbstractGoal, Goals::Build>();
+		h.template registerType<Goals::AbstractGoal, Goals::BuildThis>();
+		//h.template registerType<Goals::AbstractGoal, Goals::CIssueCommand>();
+		h.template registerType<Goals::AbstractGoal, Goals::ClearWayTo>();
+		h.template registerType<Goals::AbstractGoal, Goals::CollectRes>();
+		h.template registerType<Goals::AbstractGoal, Goals::Conquer>();
+		h.template registerType<Goals::AbstractGoal, Goals::DigAtTile>();
+		h.template registerType<Goals::AbstractGoal, Goals::Explore>();
+		h.template registerType<Goals::AbstractGoal, Goals::FindObj>();
+		h.template registerType<Goals::AbstractGoal, Goals::GatherArmy>();
+		h.template registerType<Goals::AbstractGoal, Goals::GatherTroops>();
+		h.template registerType<Goals::AbstractGoal, Goals::GetArtOfType>();
+		h.template registerType<Goals::AbstractGoal, Goals::VisitObj>();
+		h.template registerType<Goals::AbstractGoal, Goals::Invalid>();
+		//h.template registerType<Goals::AbstractGoal, Goals::NotLose>();
+		h.template registerType<Goals::AbstractGoal, Goals::RecruitHero>();
+		h.template registerType<Goals::AbstractGoal, Goals::VisitHero>();
+		h.template registerType<Goals::AbstractGoal, Goals::VisitTile>();
+		h.template registerType<Goals::AbstractGoal, Goals::Win>();
+	}
+	#endif
+
 	template<typename Handler> void serializeInternal(Handler & h, const int version)
 	{
-		h & nullkiller->memory->knownTeleportChannels;
-		h & nullkiller->memory->knownSubterraneanGates;
+		h & knownTeleportChannels;
+		h & knownSubterraneanGates;
 		h & destinationTeleport;
-		h & nullkiller->memory->visitableObjs;
-		h & nullkiller->memory->alreadyVisited;
+		h & townVisitsThisWeek;
+
+		#if 0
+		//disabled due to issue 2890
+		h & lockedHeroes;
+		#else
+		{
+			ui32 length = 0;
+			h & length;
+			if(!h.saving)
+			{
+				std::set<ui32> loadedPointers;
+				lockedHeroes.clear();
+				for(ui32 index = 0; index < length; index++)
+				{
+					HeroPtr ignored1;
+					h & ignored1;
+
+					ui8 flag = 0;
+					h & flag;
+
+					if(flag)
+					{
+						ui32 pid = 0xffffffff;
+						h & pid;
+
+						if(!vstd::contains(loadedPointers, pid))
+						{
+							loadedPointers.insert(pid);
+
+							ui16 typeId = 0;
+							//this is the problem requires such hack
+							//we have to explicitly ignore invalid goal class type id
+							h & typeId;
+							Goals::AbstractGoal ignored2;
+							ignored2.serialize(h, version);
+						}
+					}
+				}
+			}
+		}
+		#endif
+
+		h & reservedHeroesMap; //FIXME: cannot instantiate abstract class
+		h & visitableObjs;
+		h & alreadyVisited;
+		h & reservedObjs;
+		if (version < 788 && !h.saving)
+		{
+			TResources saving;
+			h & saving; //mind the ambiguity
+		}
 		h & status;
 		h & battlename;
+		h & heroesUnableToExplore;
+
+		//myCB is restored after load by init call
 	}
 };
+
+class cannotFulfillGoalException : public std::exception
+{
+	std::string msg;
+
+public:
+	explicit cannotFulfillGoalException(crstring _Message)
+		: msg(_Message)
+	{
+	}
+
+	virtual ~cannotFulfillGoalException() throw ()
+	{
+	};
+
+	const char * what() const throw () override
+	{
+		return msg.c_str();
+	}
+};
+
+class goalFulfilledException : public std::exception
+{
+	std::string msg;
+
+public:
+	Goals::TSubgoal goal;
+
+	explicit goalFulfilledException(Goals::TSubgoal Goal)
+		: goal(Goal)
+	{
+		msg = goal->name();
+	}
+
+	virtual ~goalFulfilledException() throw ()
+	{
+	};
+
+	const char * what() const throw () override
+	{
+		return msg.c_str();
+	}
+};
+
+void makePossibleUpgrades(const CArmedInstance * obj);

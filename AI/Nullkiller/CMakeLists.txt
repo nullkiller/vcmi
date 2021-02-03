@@ -1,4 +1,4 @@
-set(NULLKILLER_SRCS
+set(Nullkiller_SRCS
 		StdInc.cpp
 
 		Pathfinding/AIPathfinderConfig.cpp
@@ -58,7 +58,7 @@ set(NULLKILLER_SRCS
 		AIGateway.cpp
 )
 
-set(NULLKILLER_HEADERS
+set(Nullkiller_HEADERS
 		StdInc.h
 		
 		Pathfinding/AIPathfinderConfig.h
@@ -120,36 +120,36 @@ set(NULLKILLER_HEADERS
 		AIGateway.h
 )
 
-assign_source_group(${NULLKILLER_SRCS} ${NULLKILLER_HEADERS})
+assign_source_group(${Nullkiller_SRCS} ${Nullkiller_HEADERS})
 
 if(ANDROID) # android compiles ai libs into main lib directly, so we skip this library and just reuse sources list
 	return()
 endif()
 
-add_library(NULLKILLER SHARED ${NULLKILLER_SRCS} ${NULLKILLER_HEADERS})
+add_library(Nullkiller SHARED ${Nullkiller_SRCS} ${Nullkiller_HEADERS})
 
 if(FL_FOUND)
-	target_include_directories(NULLKILLER PUBLIC ${FL_INCLUDE_DIRS})
+	target_include_directories(Nullkiller PUBLIC ${FL_INCLUDE_DIRS})
 else()
-	target_include_directories(NULLKILLER PUBLIC ${CMAKE_HOME_DIRECTORY}/AI/FuzzyLite/fuzzylite)
+	target_include_directories(Nullkiller PUBLIC ${CMAKE_HOME_DIRECTORY}/AI/FuzzyLite/fuzzylite)
 endif()
-target_include_directories(NULLKILLER PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(Nullkiller PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 if(FL_FOUND)
-	target_link_libraries(NULLKILLER PRIVATE ${FL_LIBRARIES} vcmi)
+	target_link_libraries(Nullkiller PRIVATE ${FL_LIBRARIES} vcmi)
 else()
-	target_link_libraries(NULLKILLER PRIVATE fl-static vcmi)
+	target_link_libraries(Nullkiller PRIVATE fl-static vcmi)
 endif()
 
 if(TBB_FOUND)
-	target_link_libraries(NULLKILLER PRIVATE ${TBB_LIBRARIES})
+	target_link_libraries(Nullkiller PRIVATE ${TBB_LIBRARIES})
 else()
-	target_link_libraries(NULLKILLER PRIVATE tbb)
+	target_link_libraries(Nullkiller PRIVATE tbb)
 endif()
 
-vcmi_set_output_dir(NULLKILLER "AI")
+vcmi_set_output_dir(Nullkiller "AI")
 
-set_target_properties(NULLKILLER PROPERTIES ${PCH_PROPERTIES})
-cotire(NULLKILLER)
+set_target_properties(Nullkiller PROPERTIES ${PCH_PROPERTIES})
+cotire(Nullkiller)
 
-install(TARGETS NULLKILLER RUNTIME DESTINATION ${AI_LIB_DIR} LIBRARY DESTINATION ${AI_LIB_DIR})
+install(TARGETS Nullkiller RUNTIME DESTINATION ${AI_LIB_DIR} LIBRARY DESTINATION ${AI_LIB_DIR})
