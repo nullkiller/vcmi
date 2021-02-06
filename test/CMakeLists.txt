@@ -57,7 +57,9 @@ set(test_SRCS
  		spells/targetConditions/SpellEffectConditionTest.cpp
  		spells/targetConditions/TargetConditionItemFixture.cpp
 		
+		vcai/mock_ResourceManager.cpp
 		vcai/mock_VCAI.cpp
+		vcai/ResurceManagerTest.cpp
 
  		mock/mock_IGameCallback.cpp
  		mock/mock_MapService.cpp
@@ -77,6 +79,8 @@ set(test_HEADERS
 
 		spells/targetConditions/TargetConditionItemFixture.h
 		
+		vcai/ResourceManagerTest.h
+
 		mock/mock_BonusBearer.h
  		mock/mock_IGameCallback.h
  		mock/mock_MapService.h
@@ -97,6 +101,7 @@ set(mock_HEADERS
 		mock/mock_vstd_RNG.h
 		mock/mock_CPSICallback.h
 		
+		vcai/mock_ResourceManager.h
 		vcai/mock_VCAI.h
 		vcai/mock_VCAI_CGoal.h
 )

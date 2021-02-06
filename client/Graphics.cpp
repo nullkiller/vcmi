@@ -122,7 +122,7 @@ void Graphics::initializeBattleGraphics()
 }
 Graphics::Graphics()
 {
-	#if 1
+	#if 0
 
 	tbb::parallel_invoke(
 		std::bind(&Graphics::loadFonts,this),
@@ -132,11 +132,13 @@ Graphics::Graphics()
 		std::bind(&Graphics::initializeImageLists,this));
 
 	#else
+
 	loadFonts();
 	loadPaletteAndColors();
 	initializeBattleGraphics();
 	loadErmuToPicture();
 	initializeImageLists();
+
 	#endif
 
 	//(!) do not load any CAnimation here

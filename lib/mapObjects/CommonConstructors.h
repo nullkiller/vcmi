@@ -164,6 +164,15 @@ struct BankConfig
 
 typedef std::vector<std::pair<ui8, IObjectInfo::CArmyStructure>> TPossibleGuards;
 
+template <typename T>
+struct DLL_LINKAGE PossibleReward
+{
+	int chance;
+	T data;
+
+	PossibleReward(int chance, const T & data) : chance(chance), data(data) {}
+};
+
 class DLL_LINKAGE CBankInfo : public IObjectInfo
 {
 	const JsonVector & config;
@@ -171,8 +180,8 @@ public:
 	CBankInfo(const JsonVector & Config);
 
 	TPossibleGuards getPossibleGuards() const;
-	TResources getPossibleResourcesReward() const;
-	std::vector<CStackBasicDescriptor> getPossibleCreaturesReward() const;
+	std::vector<PossibleReward<TResources>> getPossibleResourcesReward() const;
+	std::vector<PossibleReward<CStackBasicDescriptor>> getPossibleCreaturesReward() const;
 
 	// These functions should try to evaluate minimal possible/max possible guards to give provide information on possible thread to AI
 	CArmyStructure minGuards() const override;

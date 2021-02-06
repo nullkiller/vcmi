@@ -412,34 +412,44 @@ TPossibleGuards CBankInfo::getPossibleGuards() const
 	return out;
 }
 
-TResources CBankInfo::getPossibleResourcesReward() const
+std::vector<PossibleReward<TResources>> CBankInfo::getPossibleResourcesReward() const
 {
+	std::vector<PossibleReward<TResources>> result;
+
 	for(const JsonNode & configEntry : config)
 	{
 		const JsonNode & resourcesInfo = configEntry["reward"]["resources"];
 
 		if(!resourcesInfo.isNull())
-			return TResources(resourcesInfo);
+		{
+			result.push_back(
+				PossibleReward<TResources>(
+					configEntry["chance"].Integer(),
+					TResources(resourcesInfo)
+					));
+		}
 	}
 
-	return TResources();
+	return result;
 }
 
-std::vector<CStackBasicDescriptor> CBankInfo::getPossibleCreaturesReward() const
+std::vector<PossibleReward<CStackBasicDescriptor>> CBankInfo::getPossibleCreaturesReward() const
 {
-	std::vector<CStackBasicDescriptor> aproximateReward;
+	std::vector<PossibleReward<CStackBasicDescriptor>> aproximateReward;
 
 	for(const JsonNode & configEntry : config)
 	{
-		const JsonNode & guardsInfo = configEntry["creatures"];
+		const JsonNode & guardsInfo = configEntry["reward"]["creatures"];
 		auto stacks = JsonRandom::evaluateCreatures(guardsInfo);
 
 		for(auto stack : stacks)
 		{
 			auto creature = stack.allowedCreatures.front();
-			auto stackInfo = CStackBasicDescriptor(creature, (stack.minAmount + stack.maxAmount) / 2);
 
-			aproximateReward.push_back(stackInfo);
+			aproximateReward.push_back(
+				PossibleReward<CStackBasicDescriptor>(
+					configEntry["chance"].Integer(),
+					CStackBasicDescriptor(creature, (stack.minAmount + stack.maxAmount) / 2)));
 		}
 	}
 
