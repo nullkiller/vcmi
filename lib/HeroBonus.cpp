@@ -786,13 +786,9 @@ int IBonusBearer::getPrimSkillLevel(PrimarySkill::PrimarySkill id) const
 {
 	static const CSelector selectorAllSkills = Selector::type()(Bonus::PRIMARY_SKILL);
 	static const std::string keyAllSkills = "type_PRIMARY_SKILL";
-
 	auto allSkills = getBonuses(selectorAllSkills, keyAllSkills);
-
-	int ret = allSkills->valOfBonuses(Selector::subtype()(id));
-
-	vstd::amax(ret, id/2); //minimal value is 0 for attack and defense and 1 for spell power and knowledge
-	return ret;
+	auto ret = allSkills->valOfBonuses(Selector::subtype()(id));
+	return ret; //sp=0 works in old saves
 }
 
 si32 IBonusBearer::magicResistance() const
@@ -1473,6 +1469,8 @@ JsonNode subtypeToJson(Bonus::BonusType type, int subtype)
 	case Bonus::SPECIAL_BLESS_DAMAGE:
 	case Bonus::MAXED_SPELL:
 	case Bonus::SPECIAL_PECULIAR_ENCHANT:
+	case Bonus::SPECIAL_ADD_VALUE_ENCHANT:
+	case Bonus::SPECIAL_FIXED_VALUE_ENCHANT:
 		return JsonUtils::stringNode("spell." + (*VLC->spellh)[SpellID::ESpellID(subtype)]->identifier);
 	case Bonus::IMPROVED_NECROMANCY:
 	case Bonus::SPECIAL_UPGRADE:
@@ -1561,6 +1559,8 @@ std::string Bonus::nameForBonus() const
 	case Bonus::SPECIAL_BLESS_DAMAGE:
 	case Bonus::MAXED_SPELL:
 	case Bonus::SPECIAL_PECULIAR_ENCHANT:
+	case Bonus::SPECIAL_ADD_VALUE_ENCHANT:
+	case Bonus::SPECIAL_FIXED_VALUE_ENCHANT:
 		return (*VLC->spellh)[SpellID::ESpellID(subtype)]->identifier;
 	case Bonus::SPECIAL_UPGRADE:
 		return CreatureID::encode(subtype) + "2" + CreatureID::encode(additionalInfo[0]);
