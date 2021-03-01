@@ -86,7 +86,7 @@ public:
 	void armyChanged() override {}
 	TemporaryArmy()
 	{
-		CBonusSystemNode::isTemporaryNode = true;
+		CBonusSystemNode::isHypotheticNode = true;
 	}
 };
 

@@ -83,8 +83,8 @@ public:
 	std::string getName() const; //plural or singular
 	virtual void init();
 	CStackInstance();
-	CStackInstance(CreatureID id, TQuantity count, bool isTemporary = false);
-	CStackInstance(const CCreature *cre, TQuantity count, bool isTemporary = false);
+	CStackInstance(CreatureID id, TQuantity count, bool isHypothetic = false);
+	CStackInstance(const CCreature *cre, TQuantity count, bool isHypothetic = false);
 	virtual ~CStackInstance();
 
 	void setType(CreatureID creID);

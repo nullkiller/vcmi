@@ -993,7 +993,7 @@ CBonusSystemNode::CBonusSystemNode()
 	nodeType(UNKNOWN),
 	cachedLast(0),
 	sync(),
-	isTemporaryNode(false)
+	isHypotheticNode(false)
 {
 }
 
@@ -1003,7 +1003,7 @@ CBonusSystemNode::CBonusSystemNode(ENodeTypes NodeType)
 	nodeType(NodeType),
 	cachedLast(0),
 	sync(),
-	isTemporaryNode(false)
+	isHypotheticNode(false)
 {
 }
 
@@ -1014,7 +1014,7 @@ CBonusSystemNode::CBonusSystemNode(CBonusSystemNode && other):
 	description(other.description),
 	cachedLast(0),
 	sync(),
-	isTemporaryNode(false)
+	isHypotheticNode(false)
 {
 	std::swap(parents, other.parents);
 	std::swap(children, other.children);
@@ -1055,7 +1055,7 @@ void CBonusSystemNode::attachTo(CBonusSystemNode *parent)
 	assert(!vstd::contains(parents, parent));
 	parents.push_back(parent);
 
-	if(!isTemporary())
+	if(!isHypothetic())
 	{
 		if(parent->actsAsBonusSourceOnly())
 			parent->newRedDescendant(this);
@@ -1072,7 +1072,7 @@ void CBonusSystemNode::detachFrom(CBonusSystemNode *parent)
 {
 	assert(vstd::contains(parents, parent));
 
-	if(!isTemporary())
+	if(!isHypothetic())
 	{
 		if(parent->actsAsBonusSourceOnly())
 			parent->removedRedDescendant(this);
@@ -1082,7 +1082,7 @@ void CBonusSystemNode::detachFrom(CBonusSystemNode *parent)
 
 	parents -= parent;
 
-	if(!isTemporary())
+	if(!isHypothetic())
 	{
 		parent->childDetached(this);
 	}

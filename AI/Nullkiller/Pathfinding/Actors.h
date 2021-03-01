@@ -31,7 +31,7 @@ public:
 
 	HeroExchangeArmy() : CArmedInstance(), armyCost(), requireBuyArmy(false)
 	{
-		CBonusSystemNode::isTemporaryNode = true;
+		CBonusSystemNode::isHypotheticNode = true;
 	}
 };
 

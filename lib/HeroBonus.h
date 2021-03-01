@@ -769,7 +769,7 @@ private:
 	std::shared_ptr<Bonus> update(const std::shared_ptr<Bonus> & b) const;
 
 protected:
-	bool isTemporaryNode;
+	bool isHypotheticNode;
 
 public:
 	explicit CBonusSystemNode();
@@ -813,7 +813,7 @@ public:
 	void reduceBonusDurations(const CSelector &s);
 	virtual std::string bonusToString(const std::shared_ptr<Bonus>& bonus, bool description) const {return "";}; //description or bonus name
 	virtual std::string nodeName() const;
-	bool isTemporary() const { return isTemporaryNode; }
+	bool isHypothetic() const { return isHypotheticNode; }
 
 	void deserializationFix();
 	void exportBonus(std::shared_ptr<Bonus> b);

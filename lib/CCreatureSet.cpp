@@ -59,9 +59,9 @@ bool CCreatureSet::setCreature(SlotID slot, CreatureID type, TQuantity quantity)
 		eraseStack(slot);
 
 	auto armyObj = castToArmyObj();
-	bool isTemporaryArmy = armyObj ? armyObj->isTemporary() : false;
+	bool isHypotheticArmy = armyObj ? armyObj->isHypothetic() : false;
 
-	putStack(slot, new CStackInstance(type, quantity, isTemporaryArmy));
+	putStack(slot, new CStackInstance(type, quantity, isHypotheticArmy));
 	return true;
 }
 
@@ -535,22 +535,22 @@ CStackInstance::CStackInstance()
 	init();
 }
 
-CStackInstance::CStackInstance(CreatureID id, TQuantity Count, bool isTemporary)
+CStackInstance::CStackInstance(CreatureID id, TQuantity Count, bool isHypothetic)
 	: armyObj(_armyObj)
 {
 	init();
 	setType(id);
 	count = Count;
-	CBonusSystemNode::isTemporaryNode = isTemporary;
+	CBonusSystemNode::isHypotheticNode = isHypothetic;
 }
 
-CStackInstance::CStackInstance(const CCreature *cre, TQuantity Count, bool isTemporary)
+CStackInstance::CStackInstance(const CCreature *cre, TQuantity Count, bool isHypothetic)
 	: armyObj(_armyObj)
 {
 	init();
 	setType(cre);
 	count = Count;
-	CBonusSystemNode::isTemporaryNode = isTemporary;
+	CBonusSystemNode::isHypotheticNode = isHypothetic;
 }
 
 void CStackInstance::init()
