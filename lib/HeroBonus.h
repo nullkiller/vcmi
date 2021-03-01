@@ -768,6 +768,9 @@ private:
 	TConstBonusListPtr getAllBonusesWithoutCaching(const CSelector &selector, const CSelector &limit, const CBonusSystemNode *root = nullptr) const;
 	std::shared_ptr<Bonus> update(const std::shared_ptr<Bonus> & b) const;
 
+protected:
+	bool isTemporaryNode;
+
 public:
 	explicit CBonusSystemNode();
 	explicit CBonusSystemNode(ENodeTypes NodeType);
@@ -794,8 +797,8 @@ public:
 	virtual void addNewBonus(const std::shared_ptr<Bonus>& b);
 	void accumulateBonus(const std::shared_ptr<Bonus>& b); //add value of bonus with same type/subtype or create new
 
-	virtual void newChildAttached(CBonusSystemNode *child);
-	virtual void childDetached(CBonusSystemNode *child);
+	void newChildAttached(CBonusSystemNode *child);
+	void childDetached(CBonusSystemNode *child);
 	void propagateBonus(std::shared_ptr<Bonus> b);
 	void unpropagateBonus(std::shared_ptr<Bonus> b);
 	void removeBonus(const std::shared_ptr<Bonus>& b);
@@ -810,6 +813,7 @@ public:
 	void reduceBonusDurations(const CSelector &s);
 	virtual std::string bonusToString(const std::shared_ptr<Bonus>& bonus, bool description) const {return "";}; //description or bonus name
 	virtual std::string nodeName() const;
+	bool isTemporary() const { return isTemporaryNode; }
 
 	void deserializationFix();
 	void exportBonus(std::shared_ptr<Bonus> b);

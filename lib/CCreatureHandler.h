@@ -24,7 +24,6 @@ class CCreature;
 class DLL_LINKAGE CCreature : public CBonusSystemNode
 {
 public:
-	static bool DisableChildLinkage;
 	std::string identifier;
 
 	std::string nameRef; // reference name, stringID
@@ -139,8 +138,6 @@ public:
 	void setId(CreatureID ID); //assigns idNumber and updates bonuses to reference it
 	void addBonus(int val, Bonus::BonusType type, int subtype = -1);
 	std::string nodeName() const override;
-	void newChildAttached(CBonusSystemNode *child) override;
-	void childDetached(CBonusSystemNode *child) override;
 
 	template<typename RanGen>
 	int getRandomAmount(RanGen ranGen) const

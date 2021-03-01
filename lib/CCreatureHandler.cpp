@@ -181,18 +181,6 @@ void CCreature::fillWarMachine()
 	warMachine = ArtifactID::NONE; //this creature is not artifact
 }
 
-bool CCreature::DisableChildLinkage = false;
-
-void CCreature::newChildAttached(CBonusSystemNode *child)
-{
-	if(!DisableChildLinkage) CBonusSystemNode::newChildAttached(child);
-}
-
-void CCreature::childDetached(CBonusSystemNode *child)
-{
-	if(!DisableChildLinkage) CBonusSystemNode::childDetached(child);
-}
-
 static void AddAbility(CCreature *cre, const JsonVector &ability_vec)
 {
 	auto nsf = std::make_shared<Bonus>();
